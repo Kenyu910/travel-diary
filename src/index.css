@@ -21,6 +21,11 @@ body {
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
 
+/* Fix #1: Prevent iOS Safari auto-zoom on input focus (requires font-size >= 16px) */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
 /* Leaflet z-index fix */
 .leaflet-container { z-index: 0; }
 .leaflet-control   { z-index: 10 !important; }

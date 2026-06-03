@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star } from 'lucide-react' // X kept for tag removal
+import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2 } from 'lucide-react'
 import { StarRating } from './StarRating'
+import { compressImage } from '../utils/compressImage'
 import type { Entry } from '../types'
 
 type Props = {
@@ -21,6 +22,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
   const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [rating, setRating] = useState<number>(initial?.rating ?? 0)
+  const [compressing, setCompressing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const addTag = () => {
@@ -29,17 +31,22 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
     setTagInput('')
   }
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Fix: compress images before storing to prevent main thread freeze
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
-    files.forEach(file => {
-      if (file.size > 500_000) alert(`「${file.name}」は500KB超です。多数保存するとデータが失われる場合があります。`)
-      const reader = new FileReader()
-      reader.onload = ev => {
-        if (ev.target?.result) setPhotos(prev => [...prev, ev.target!.result as string])
-      }
-      reader.readAsDataURL(file)
-    })
+    if (files.length === 0) return
     e.target.value = ''
+    setCompressing(true)
+    try {
+      for (const file of files) {
+        const compressed = await compressImage(file)
+        setPhotos(prev => [...prev, compressed])
+      }
+    } catch (err) {
+      alert('写真の処理に失敗しました。別の画像をお試しください。')
+    } finally {
+      setCompressing(false)
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,9 +149,20 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
           <Image size={11} /> 写真
         </label>
-        <button type="button" onClick={() => fileRef.current?.click()}
-          className="w-full py-3 border-2 border-dashed border-pink-200 rounded-2xl text-sm text-pink-400 bg-pink-50 flex items-center justify-center gap-2">
-          <Plus size={15} /> 写真を追加
+        <button
+          type="button"
+          onClick={() => !compressing && fileRef.current?.click()}
+          disabled={compressing}
+          className={`w-full py-3 border-2 border-dashed rounded-2xl text-sm flex items-center justify-center gap-2 transition-colors ${
+            compressing
+              ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+              : 'border-pink-200 text-pink-400 bg-pink-50'
+          }`}
+        >
+          {compressing
+            ? <><Loader2 size={15} className="animate-spin" /> 処理中...</>
+            : <><Plus size={15} /> 写真を追加</>
+          }
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhoto} className="hidden" />
         {photos.length > 0 && (
