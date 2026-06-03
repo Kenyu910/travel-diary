@@ -26,12 +26,9 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
     setTagInput('')
   }
 
-  const removeTag = (tag: string) => setTags(prev => prev.filter(t => t !== tag))
-
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     files.forEach(file => {
-      // Warn if file is large (localStorage has ~5MB limit total)
       if (file.size > 500_000) {
         alert(`「${file.name}」は500KB超です。多数の写真を保存するとデータが失われる場合があります。`)
       }
@@ -41,7 +38,6 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
       }
       reader.readAsDataURL(file)
     })
-    // Reset input so same file can be re-selected
     e.target.value = ''
   }
 
@@ -63,84 +59,98 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-4 h-full overflow-y-auto">
-      <h2 className="text-lg font-semibold text-gray-800">
-        {initial ? '記録を編集' : '新しい記録'}
-      </h2>
+    <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-2 pb-6 gap-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-lg font-bold text-gray-700">
+          {initial ? '✏️ 編集' : '📍 新しい記録'}
+        </h2>
+        <button type="button" onClick={onCancel} className="text-gray-400 text-2xl leading-none">×</button>
+      </div>
 
+      {/* Title */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">タイトル *</label>
+        <label className="text-xs font-medium text-gray-500 mb-1.5 block">タイトル *</label>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="場所のタイトル"
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+          placeholder="どんな場所でしたか？"
           required
         />
       </div>
 
-      <div className="flex gap-2">
+      {/* Date + Place */}
+      <div className="flex gap-3">
         <div className="flex-1">
-          <label className="text-xs text-gray-500 mb-1 block">日付</label>
+          <label className="text-xs font-medium text-gray-500 mb-1.5 block">📅 日付</label>
           <input
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-gray-500 mb-1 block">場所名</label>
+          <label className="text-xs font-medium text-gray-500 mb-1.5 block">📍 場所名</label>
           <input
             value={placeName}
             onChange={e => setPlaceName(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="例: 渋谷駅前"
+            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+            placeholder="渋谷駅前"
           />
         </div>
       </div>
 
+      {/* Memo */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">メモ</label>
+        <label className="text-xs font-medium text-gray-500 mb-1.5 block">📝 メモ</label>
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
           rows={4}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-          placeholder="この場所の思い出を書く..."
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 resize-none"
+          placeholder="この場所の思い出を書いてみよう..."
         />
       </div>
 
+      {/* Tags */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">タグ</label>
+        <label className="text-xs font-medium text-gray-500 mb-1.5 block">🏷️ タグ</label>
         <div className="flex gap-2 mb-2">
           <input
             value={tagInput}
             onChange={e => setTagInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="#グルメ #旅行"
+            className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+            placeholder="グルメ, 旅行..."
           />
-          <button type="button" onClick={addTag} className="px-3 py-2 bg-gray-100 rounded text-sm hover:bg-gray-200">
+          <button
+            type="button"
+            onClick={addTag}
+            className="px-4 py-3 bg-purple-100 text-purple-500 rounded-2xl text-sm font-medium"
+          >
             追加
           </button>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {tags.map(tag => (
-            <span key={tag} className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-              #{tag}
-              <button type="button" onClick={() => removeTag(tag)} className="text-blue-400 hover:text-blue-700">×</button>
-            </span>
-          ))}
-        </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map(tag => (
+              <span key={tag} className="flex items-center gap-1 bg-purple-50 text-purple-400 text-xs px-3 py-1.5 rounded-full">
+                #{tag}
+                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="text-purple-300 hover:text-purple-500">×</button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Photos */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">写真</label>
+        <label className="text-xs font-medium text-gray-500 mb-1.5 block">🖼️ 写真</label>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="px-3 py-2 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 w-full"
+          className="w-full py-3 border-2 border-dashed border-pink-200 rounded-2xl text-sm text-pink-400 bg-pink-50 hover:bg-pink-100 transition-colors"
         >
           + 写真を追加
         </button>
@@ -149,11 +159,11 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
           <div className="flex gap-2 mt-2 flex-wrap">
             {photos.map((p, i) => (
               <div key={i} className="relative">
-                <img src={p} className="w-16 h-16 object-cover rounded" />
+                <img src={p} className="w-20 h-20 object-cover rounded-xl" />
                 <button
                   type="button"
                   onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
-                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 bg-red-400 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow"
                 >
                   ×
                 </button>
@@ -163,25 +173,16 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
         )}
       </div>
 
-      <div className="text-xs text-gray-400">
-        📍 {lat.toFixed(5)}, {lng.toFixed(5)}
-      </div>
+      <p className="text-xs text-gray-300 text-center">
+        {lat.toFixed(5)}, {lng.toFixed(5)}
+      </p>
 
-      <div className="flex gap-2 mt-auto pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50"
-        >
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          className="flex-1 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-        >
-          保存
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold text-base shadow-md shadow-pink-200 active:scale-95 transition-transform"
+      >
+        💾 保存する
+      </button>
     </form>
   )
 }

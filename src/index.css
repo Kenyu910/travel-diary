@@ -1,17 +1,26 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  background: #fdf6fb;
+  overscroll-behavior: none;
 }
 
 #root {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
+
+/* iPhone safe area */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
+
+/* Leaflet z-index fix */
+.leaflet-container { z-index: 0; }
+.leaflet-control   { z-index: 10 !important; }
