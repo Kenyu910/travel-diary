@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { LocateFixed } from 'lucide-react'
+import { Navigation2 } from 'lucide-react'
 import type { Entry } from '../types'
 import type { AppSettings } from '../settings'
 import { MAP_TILES } from '../settings'
@@ -66,7 +66,7 @@ function GeolocateButton() {
             cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           }}
         >
-          <LocateFixed size={16} color="#f472b6" />
+          <Navigation2 size={16} color="#f472b6" />
         </button>
       </div>
     </div>
@@ -99,9 +99,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, s
   })
 
   return (
-    // key on mapStyle forces TileLayer remount when style changes
     <MapContainer
-      key={settings.mapStyle}
       center={[settings.defaultLat, settings.defaultLng]}
       zoom={settings.defaultZoom}
       className="w-full h-full"

@@ -49,7 +49,7 @@ function Row({
   return (
     <div
       onClick={onRowClick}
-      className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 ${
+      className={`flex items-center gap-3 pl-4 pr-5 py-3.5 border-b border-gray-50 last:border-0 ${
         onRowClick ? 'cursor-pointer active:bg-gray-50' : ''
       }`}
     >
