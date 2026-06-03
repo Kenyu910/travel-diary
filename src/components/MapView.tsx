@@ -52,6 +52,7 @@ export function MapView({
       defaultCenter={{ lat: settings.defaultLat, lng: settings.defaultLng }}
       defaultZoom={settings.defaultZoom}
       mapTypeId={mapStyle.mapTypeId}
+      mapId="DEMO_MAP_ID"
       disableDefaultUI={false}
       gestureHandling="greedy"
       className="w-full h-full"
