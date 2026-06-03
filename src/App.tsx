@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MapView } from './components/MapView'
 import { Sidebar } from './components/Sidebar'
 import { EntryForm } from './components/EntryForm'
@@ -16,12 +16,25 @@ export default function App() {
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const handleMapClick = (lat: number, lng: number) => {
+  // Esc key closes form/detail back to list
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (panel === 'form' || panel === 'detail') setPanel('list')
+        if (panel === 'edit') setPanel('detail')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [panel])
+
+  // useCallback to stabilize reference for MapClickHandler
+  const handleMapClick = useCallback((lat: number, lng: number) => {
     setClickedPos({ lat, lng })
     setSelectedEntry(null)
     setPanel('form')
     setSidebarOpen(true)
-  }
+  }, [])
 
   const handleSelectEntry = (entry: Entry) => {
     setSelectedEntry(entry)
@@ -54,6 +67,16 @@ export default function App() {
     setPanel('list')
   }
 
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `travel-diary-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="flex flex-col h-dvh">
       <header className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm z-10">
@@ -76,13 +99,15 @@ export default function App() {
         <div className="flex-1 relative">
           <MapView
             entries={entries}
-            selectedEntry={selectedEntry}
+            selectedEntryId={selectedEntry?.id ?? null}
             onSelectEntry={handleSelectEntry}
             onMapClick={handleMapClick}
           />
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur px-3 py-1.5 rounded-full text-xs text-gray-500 shadow pointer-events-none">
-            クリックして記録を追加
-          </div>
+          {panel !== 'form' && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur px-3 py-1.5 rounded-full text-xs text-gray-500 shadow pointer-events-none">
+              クリックして記録を追加
+            </div>
+          )}
         </div>
 
         {sidebarOpen && (
@@ -94,6 +119,7 @@ export default function App() {
                 filterTag={filterTag}
                 onSelectEntry={handleSelectEntry}
                 onFilterTag={handleFilterTag}
+                onExport={handleExport}
               />
             )}
             {panel === 'form' && clickedPos && (

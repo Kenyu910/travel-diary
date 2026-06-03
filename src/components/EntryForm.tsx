@@ -31,12 +31,18 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     files.forEach(file => {
+      // Warn if file is large (localStorage has ~5MB limit total)
+      if (file.size > 500_000) {
+        alert(`「${file.name}」は500KB超です。多数の写真を保存するとデータが失われる場合があります。`)
+      }
       const reader = new FileReader()
       reader.onload = ev => {
         if (ev.target?.result) setPhotos(prev => [...prev, ev.target!.result as string])
       }
       reader.readAsDataURL(file)
     })
+    // Reset input so same file can be re-selected
+    e.target.value = ''
   }
 
   const handleSubmit = (e: React.FormEvent) => {
