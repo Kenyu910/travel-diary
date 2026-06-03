@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react'
-import { Search, X, PlusCircle, Navigation2 } from 'lucide-react'
-import { APIProvider } from '@vis.gl/react-google-maps'
+import { useState, useCallback, useRef, useMemo } from 'react'
+import { PlusCircle, Navigation2 } from 'lucide-react'
+import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
+import { PlacesSearch } from './components/PlacesSearch'
 import { BottomSheet } from './components/BottomSheet'
 import { BottomNav } from './components/BottomNav'
 import type { Tab } from './components/BottomNav'
@@ -27,7 +28,8 @@ const SHEET_TITLES: Partial<Record<NonNullable<SheetContent>, string>> = {
   settings: '設定',
 }
 
-export default function App() {
+// AppContent is inside APIProvider so it can use useMapsLibrary
+function AppContent() {
   const { entries, addEntry, updateEntry, deleteEntry, setEntries } = useEntries()
   const { settings, update: updateSettings } = useSettings()
 
@@ -35,25 +37,25 @@ export default function App() {
   const [sheet, setSheet] = useState<SheetContent>(null)
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
   const [clickedPos, setClickedPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [clickedPlaceName, setClickedPlaceName] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
-  const [mapSearch, setMapSearch] = useState('')
-  const [searchFocused, setSearchFocused] = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
-  const mapRef = useRef<ReturnType<typeof import('@vis.gl/react-google-maps').useMap> | null>(null)
 
-  // Use ref to read latest sheet value in useCallback without re-creating it
+  const mapRef = useRef<ReturnType<typeof useMap> | null>(null)
   const sheetRef = useRef<SheetContent>(null)
   sheetRef.current = sheet
 
-  // Bug fix #1 & #2: edit→detail, others→map; clear selectedEntry on full close
+  // Geocoding for reverse geocode on map tap
+  const geocodingLib = useMapsLibrary('geocoding')
+  const geocoder = useMemo(
+    () => geocodingLib ? new geocodingLib.Geocoder() : null,
+    [geocodingLib]
+  )
+
   const closeSheet = useCallback(() => {
-    if (sheetRef.current === 'edit') {
-      setSheet('detail')
-      return
-    }
+    if (sheetRef.current === 'edit') { setSheet('detail'); return }
     setSheet(null)
     setTab('map')
-    setSelectedEntry(null)  // Bug fix #1: clear selection so pin returns to normal
+    setSelectedEntry(null)
   }, [])
 
   const handleTabChange = (t: Tab) => {
@@ -65,18 +67,53 @@ export default function App() {
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setClickedPos({ lat, lng })
+    setClickedPlaceName('')
     setSelectedEntry(null)
     setTab('map')
     setSheet('form')
+
+    // Reverse geocode to get place name automatically
+    if (geocoder) {
+      geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+        if (status === 'OK' && results?.[0]) {
+          const comps = results[0].address_components as any[]
+          const find = (...types: string[]) => comps?.find((c: any) => types.some(t => c.types.includes(t)))?.long_name || ''
+          const locality = find('sublocality_level_2') || find('sublocality_level_1') || find('locality')
+          const subloc = find('premise') || find('route')
+          setClickedPlaceName(subloc ? `${locality} ${subloc}`.trim() : locality)
+        }
+      })
+    }
+  }, [geocoder])
+
+  const handlePlaceSelected = useCallback((lat: number, lng: number, name: string) => {
+    setClickedPos({ lat, lng })
+    setClickedPlaceName(name)
+    setSelectedEntry(null)
+    setTab('map')
+    setSheet('form')
+    mapRef.current?.panTo({ lat, lng })
   }, [])
 
   const handleQuickAdd = () => {
     navigator.geolocation.getCurrentPosition(
       pos => {
-        setClickedPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const { latitude: lat, longitude: lng } = pos.coords
+        setClickedPos({ lat, lng })
+        setClickedPlaceName('')
         setSelectedEntry(null)
         setTab('map')
         setSheet('form')
+        if (geocoder) {
+          geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+            if (status === 'OK' && results?.[0]) {
+              const comps = results[0].address_components as any[]
+              const find = (...types: string[]) => comps?.find((c: any) => types.some(t => c.types.includes(t)))?.long_name || ''
+              const locality = find('sublocality_level_2') || find('sublocality_level_1') || find('locality')
+              setClickedPlaceName(locality)
+            }
+          })
+        }
       },
       () => alert('位置情報を取得できませんでした。設定で位置情報を許可してください。')
     )
@@ -135,20 +172,9 @@ export default function App() {
     setTab('map')
   }
 
-  const cancelMapSearch = () => {
-    setMapSearch('')
-    setFilterTag(null)
-    setSearchFocused(false)
-    searchRef.current?.blur()
-  }
-
-  const hasMapFilter = !!filterTag || !!mapSearch
   const sheetTitle = sheet ? (SHEET_TITLES[sheet] ?? '') : ''
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string
-
   return (
-    <APIProvider apiKey={apiKey}>
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
       <div className="flex-1 relative overflow-hidden">
         <MapErrorBoundary>
@@ -159,13 +185,13 @@ export default function App() {
             onMapClick={handleMapClick}
             settings={settings}
             filterTag={filterTag}
-            searchQuery={mapSearch}
+            searchQuery=""
             mapRef={mapRef}
           />
         </MapErrorBoundary>
 
         {/* Title pill */}
-        {!searchFocused && (
+        {sheet === null && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none safe-top">
             <div className="bg-white/85 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100/50">
               <span className="text-sm font-bold text-pink-500">旅日記</span>
@@ -173,44 +199,19 @@ export default function App() {
           </div>
         )}
 
-        {/* Bug fix #4: search bar with left margin to avoid zoom controls */}
+        {/* Google Places search bar */}
         {sheet === null && (
           <div
-            className="absolute z-10 flex items-center gap-2 safe-top"
-            style={{ top: searchFocused ? 12 : 48, left: searchFocused ? 16 : 60, right: 16, transition: 'all 0.2s' }}
+            className="absolute z-10 safe-top"
+            style={{ top: 48, left: 60, right: 16 }}
           >
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input
-                ref={searchRef}
-                value={mapSearch}
-                onChange={e => setMapSearch(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => { if (!mapSearch) setSearchFocused(false) }}
-                placeholder="マップを絞り込み..."
-                className="w-full bg-white/92 backdrop-blur-sm border border-gray-200/70 rounded-2xl pl-8 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 shadow-sm"
-              />
-              {mapSearch && (
-                <button onClick={() => setMapSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            {(searchFocused || hasMapFilter) && (
-              <button
-                onClick={cancelMapSearch}
-                className="bg-white/92 backdrop-blur-sm border border-gray-200/70 text-pink-500 text-sm font-medium px-3 py-2 rounded-2xl shadow-sm whitespace-nowrap"
-              >
-                キャンセル
-              </button>
-            )}
+            <PlacesSearch onPlaceSelected={handlePlaceSelected} />
           </div>
         )}
 
         {/* FAB buttons */}
-        {sheet === null && !searchFocused && (
+        {sheet === null && (
           <div className="absolute bottom-14 right-4 z-10 flex flex-col gap-2">
-            {/* Quick add at current location */}
             <button
               onClick={handleQuickAdd}
               className="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
@@ -218,7 +219,6 @@ export default function App() {
             >
               <PlusCircle size={22} className="text-white" />
             </button>
-            {/* Center map on current location */}
             <button
               onClick={handleLocate}
               className="w-12 h-12 bg-white rounded-full shadow-md border border-gray-200 flex items-center justify-center active:scale-95 transition-transform"
@@ -229,7 +229,7 @@ export default function App() {
           </div>
         )}
 
-        {settings.showHint && sheet === null && !searchFocused && (
+        {settings.showHint && sheet === null && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
             <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm text-xs text-gray-400 border border-gray-100/50">
               タップして記録を追加
@@ -254,7 +254,9 @@ export default function App() {
             onFilterTag={setFilterTag} onSelectEntry={handleSelectEntry} />
         )}
         {sheet === 'form' && clickedPos && (
-          <EntryForm lat={clickedPos.lat} lng={clickedPos.lng}
+          <EntryForm
+            lat={clickedPos.lat} lng={clickedPos.lng}
+            defaultPlaceName={clickedPlaceName}
             onSave={handleSave} onCancel={closeSheet} />
         )}
         {sheet === 'detail' && selectedEntry && (
@@ -275,6 +277,14 @@ export default function App() {
         )}
       </BottomSheet>
     </div>
+  )
+}
+
+export default function App() {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string
+  return (
+    <APIProvider apiKey={apiKey} libraries={['places', 'geocoding']}>
+      <AppContent />
     </APIProvider>
   )
 }

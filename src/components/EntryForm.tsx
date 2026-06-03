@@ -11,13 +11,14 @@ type Props = {
   onSave: (entry: Entry) => void
   onCancel: () => void
   initial?: Entry
+  defaultPlaceName?: string  // auto-filled from reverse geocoding
 }
 
-export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
+export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlaceName }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
-  const [placeName, setPlaceName] = useState(initial?.placeName ?? '')
+  const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
@@ -71,27 +72,30 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
         />
       </div>
 
-      {/* Date + Place */}
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-            <Calendar size={11} /> 日付
-          </label>
-          <input
-            type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-          />
-        </div>
-        <div className="flex-1">
-          <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-            <MapPin size={11} /> 場所名
-          </label>
-          <input
-            value={placeName} onChange={e => setPlaceName(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-            placeholder="渋谷駅前"
-          />
-        </div>
+      {/* Date */}
+      <div>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <Calendar size={11} /> 日付
+        </label>
+        <input
+          type="date" value={date} onChange={e => setDate(e.target.value)}
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        />
+      </div>
+
+      {/* Place */}
+      <div>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <MapPin size={11} /> 場所名
+          {defaultPlaceName && !initial && (
+            <span className="text-[10px] text-pink-400 ml-1">📍 自動入力</span>
+          )}
+        </label>
+        <input
+          value={placeName} onChange={e => setPlaceName(e.target.value)}
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          placeholder="例: 渋谷駅前"
+        />
       </div>
 
       {/* Rating */}
