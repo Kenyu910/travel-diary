@@ -31,5 +31,5 @@ export function useEntries() {
   const deleteEntry = (id: string) =>
     setEntries(prev => prev.filter(e => e.id !== id))
 
-  return { entries, addEntry, updateEntry, deleteEntry }
+  return { entries, setEntries, addEntry, updateEntry, deleteEntry }
 }

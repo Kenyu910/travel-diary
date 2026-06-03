@@ -1,4 +1,4 @@
-type Tab = 'map' | 'list' | 'tags'
+export type Tab = 'map' | 'list' | 'tags' | 'settings'
 
 type Props = {
   active: Tab
@@ -7,9 +7,10 @@ type Props = {
 }
 
 const tabs: { key: Tab; icon: string; label: string }[] = [
-  { key: 'map',  icon: '🗺️', label: 'マップ' },
-  { key: 'list', icon: '📖', label: '日記'   },
-  { key: 'tags', icon: '🏷️', label: 'タグ'   },
+  { key: 'map',      icon: '🗺️', label: 'マップ' },
+  { key: 'list',     icon: '📖', label: '日記'   },
+  { key: 'tags',     icon: '🏷️', label: 'タグ'   },
+  { key: 'settings', icon: '⚙️', label: '設定'   },
 ]
 
 export function BottomNav({ active, onChange, entryCount }: Props) {
@@ -19,14 +20,14 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
-          className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
+          className={`flex-1 flex flex-col items-center py-2 gap-0.5 relative transition-colors ${
             active === t.key ? 'text-pink-500' : 'text-gray-400'
           }`}
         >
           <span className="text-2xl leading-none">{t.icon}</span>
           <span className="text-[10px] font-medium">{t.label}</span>
           {t.key === 'list' && entryCount > 0 && (
-            <span className="absolute -translate-y-1 translate-x-3 bg-pink-400 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
+            <span className="absolute top-1.5 right-[calc(50%-18px)] bg-pink-400 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
               {entryCount > 99 ? '99+' : entryCount}
             </span>
           )}

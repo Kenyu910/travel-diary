@@ -2,6 +2,8 @@ import { useEffect, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { Entry } from '../types'
+import type { AppSettings } from '../settings'
+import { MAP_TILES } from '../settings'
 
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -68,15 +70,18 @@ type Props = {
   selectedEntryId: string | null
   onSelectEntry: (entry: Entry) => void
   onMapClick: (lat: number, lng: number) => void
+  settings: AppSettings
 }
 
-export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick }: Props) {
+export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, settings }: Props) {
+  const tile = MAP_TILES[settings.mapStyle]
   return (
-    <MapContainer center={[35.6762, 139.6503]} zoom={10} className="w-full h-full">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <MapContainer
+      center={[settings.defaultLat, settings.defaultLng]}
+      zoom={settings.defaultZoom}
+      className="w-full h-full"
+    >
+      <TileLayer attribution={tile.attribution} url={tile.url} />
       <FlyTo entryId={selectedEntryId} entries={entries} />
       <GeolocateButton />
       {entries.map(entry => (
@@ -98,7 +103,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick }:
               {entry.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {entry.tags.map(tag => (
-                    <span key={tag} className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
+                    <span key={tag} className="text-xs bg-pink-100 text-pink-600 px-1 rounded-full">
                       #{tag}
                     </span>
                   ))}
