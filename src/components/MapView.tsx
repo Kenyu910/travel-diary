@@ -16,6 +16,14 @@ type FoodPlace = {
   rating?: number
 }
 
+type NativePoi = {
+  placeId: string
+  name: string
+  lat: number
+  lng: number
+  address: string
+}
+
 type SearchPin = { lat: number; lng: number; name: string }
 
 type Props = {
@@ -28,8 +36,8 @@ type Props = {
   filterTag: string | null
   searchQuery: string
   mapRef: React.MutableRefObject<ReturnType<typeof useMap>>
-  searchPin: SearchPin | null          // temporary marker from search
-  onSearchPinClick: () => void         // confirm → open form
+  searchPin: SearchPin | null
+  onSearchPinClick: () => void
   onClearSearchPin: () => void
 }
 
@@ -39,34 +47,38 @@ function MapRefSetter({ mapRef }: { mapRef: React.MutableRefObject<ReturnType<ty
   return null
 }
 
+/** Blue pulsing dot for current location — clearly distinct from pink diary pins */
 function CurrentLocationDot({ lat, lng }: { lat: number; lng: number }) {
   return (
-    <AdvancedMarker position={{ lat, lng }} zIndex={999}>
-      {/* Blue pulsing circle — clearly distinct from pink diary teardrops */}
-      <div style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Outer pulse ring */}
+    <AdvancedMarker position={{ lat, lng }} zIndex={9999}>
+      <div style={{ position: 'relative', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Pulsing outer ring */}
         <div style={{
-          position: 'absolute', width: 40, height: 40,
-          borderRadius: '50%', background: 'rgba(66,133,244,0.2)',
-          animation: 'locPulse 1.8s ease-out infinite',
+          position: 'absolute', width: 36, height: 36, borderRadius: '50%',
+          background: 'rgba(66,133,244,0.2)', border: '1px solid rgba(66,133,244,0.4)',
+          animation: 'locPulse 2s ease-out infinite',
         }} />
-        {/* Middle ring */}
+        {/* White border ring */}
         <div style={{
-          position: 'absolute', width: 28, height: 28,
-          borderRadius: '50%', background: 'rgba(66,133,244,0.15)',
-          border: '1px solid rgba(66,133,244,0.4)',
+          position: 'absolute', width: 20, height: 20, borderRadius: '50%',
+          background: 'white', boxShadow: '0 0 0 2px rgba(66,133,244,0.3)',
         }} />
-        {/* Blue dot */}
+        {/* Blue core dot */}
         <div style={{
-          width: 16, height: 16, borderRadius: '50%',
+          position: 'absolute', width: 14, height: 14, borderRadius: '50%',
           background: '#4285F4',
-          border: '2.5px solid white',
-          boxShadow: '0 1px 4px rgba(66,133,244,0.6)',
-          position: 'relative', zIndex: 1,
+          boxShadow: '0 2px 6px rgba(66,133,244,0.7)',
         }} />
       </div>
     </AdvancedMarker>
   )
+}
+
+function openInGoogleMaps(lat: number, lng: number, placeId?: string) {
+  const url = placeId
+    ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
+    : `https://www.google.com/maps/@${lat},${lng},17z`
+  window.open(url, '_blank')
 }
 
 export function MapView({
@@ -84,6 +96,8 @@ export function MapView({
   const [selectedFood, setSelectedFood] = useState<FoodPlace | null>(null)
   const [loadingFood, setLoadingFood] = useState(false)
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
+  const [loadingPoi, setLoadingPoi] = useState(false)
 
   const placesService = useMemo(
     () => placesLib && map ? new placesLib.PlacesService(map) : null,
@@ -160,8 +174,35 @@ export function MapView({
       onClick={e => {
         const lat = e.detail.latLng?.lat
         const lng = e.detail.latLng?.lng
+        const placeId = e.detail.placeId
+
+        // Native Google Maps POI tapped (shop, restaurant, etc.)
+        if (placeId && placesService) {
+          setSelectedFood(null)
+          onClearSearchPin()
+          setLoadingPoi(true)
+          placesService.getDetails(
+            { placeId, fields: ['name', 'geometry', 'formatted_address', 'rating'] },
+            (place: any, status: any) => {
+              setLoadingPoi(false)
+              if (status === 'OK' && place) {
+                setNativePoi({
+                  placeId,
+                  name: place.name || '',
+                  lat: place.geometry.location.lat(),
+                  lng: place.geometry.location.lng(),
+                  address: place.formatted_address || '',
+                })
+              }
+            }
+          )
+          return
+        }
+
+        // Regular map tap
         if (lat !== undefined && lng !== undefined) {
           setSelectedFood(null)
+          setNativePoi(null)
           onClearSearchPin()
           onMapClick(lat, lng)
         }
@@ -169,15 +210,12 @@ export function MapView({
     >
       <MapRefSetter mapRef={mapRef} />
 
-      {/* Current location — blue dot */}
+      {/* Current location — blue pulsing dot */}
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
 
-      {/* Search result pin — purple, tap to confirm */}
+      {/* Search result pin — purple */}
       {searchPin && (
-        <AdvancedMarker
-          position={{ lat: searchPin.lat, lng: searchPin.lng }}
-          onClick={onSearchPinClick}
-        >
+        <AdvancedMarker position={{ lat: searchPin.lat, lng: searchPin.lng }} onClick={onSearchPinClick}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
               background: '#7c3aed', color: 'white', borderRadius: 12,
@@ -197,12 +235,12 @@ export function MapView({
         </AdvancedMarker>
       )}
 
-      {/* Diary entry pins — pink */}
+      {/* Diary entry pins — pink teardrop */}
       {showDiaryPins && visibleEntries.map(entry => (
         <AdvancedMarker
           key={entry.id}
           position={{ lat: entry.lat, lng: entry.lng }}
-          onClick={() => { setSelectedFood(null); onClearSearchPin(); onSelectEntry(entry) }}
+          onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}
         >
           <Pin
             background={entry.id === selectedEntryId ? '#ef4444' : '#ec4899'}
@@ -213,7 +251,7 @@ export function MapView({
         </AdvancedMarker>
       ))}
 
-      {/* Food/cafe markers — orange or brown */}
+      {/* Food/cafe markers */}
       {foodMode !== 'none' && foodPlaces.map(place => (
         <AdvancedMarker
           key={place.placeId}
@@ -235,63 +273,101 @@ export function MapView({
         </AdvancedMarker>
       ))}
 
-      {/* Selected diary InfoWindow */}
+      {/* Selected diary entry InfoWindow */}
       {selectedEntry && (
         <InfoWindow
           position={{ lat: selectedEntry.lat, lng: selectedEntry.lng }}
           pixelOffset={[0, -40]}
           onClose={() => {}}
         >
-          <div className="min-w-[140px] max-w-[200px]">
+          <div style={{ minWidth: 140, maxWidth: 200 }}>
             {selectedEntry.placeName && (
-              <p className="text-xs font-semibold text-pink-500 mb-0.5">📍 {selectedEntry.placeName}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#ec4899', marginBottom: 2 }}>
+                📍 {selectedEntry.placeName}
+              </p>
             )}
-            <p className="font-semibold text-sm text-gray-800">{selectedEntry.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{selectedEntry.date}</p>
+            <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{selectedEntry.title}</p>
+            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{selectedEntry.date}</p>
           </div>
         </InfoWindow>
       )}
 
-      {/* Food POI InfoWindow */}
+      {/* Food POI InfoWindow — 日記を書く + Google Mapsで見る */}
       {selectedFood && (
         <InfoWindow
           position={{ lat: selectedFood.lat, lng: selectedFood.lng }}
           pixelOffset={[0, -20]}
           onClose={() => setSelectedFood(null)}
         >
-          <div className="min-w-[160px]">
-            <p className="font-semibold text-sm text-gray-800">{selectedFood.name}</p>
-            <p className="text-xs text-gray-400">{selectedFood.vicinity}</p>
+          <div style={{ minWidth: 160 }}>
+            <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{selectedFood.name}</p>
+            <p style={{ fontSize: 11, color: '#6b7280' }}>{selectedFood.vicinity}</p>
             {selectedFood.rating && (
-              <p className="text-xs text-amber-500 mt-0.5">★ {selectedFood.rating}</p>
+              <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>★ {selectedFood.rating}</p>
             )}
             <button
               onClick={() => { setSelectedFood(null); onPoiClick(selectedFood.lat, selectedFood.lng, selectedFood.name) }}
-              className="mt-2 w-full py-1.5 bg-pink-400 text-white text-xs rounded-full font-medium"
+              style={{ marginTop: 8, width: '100%', padding: '6px 0', background: '#ec4899', color: 'white', fontSize: 12, borderRadius: 20, fontWeight: 600, border: 'none', cursor: 'pointer' }}
             >
               📖 日記を書く
+            </button>
+            <button
+              onClick={() => openInGoogleMaps(selectedFood.lat, selectedFood.lng, selectedFood.placeId)}
+              style={{ marginTop: 4, width: '100%', padding: '5px 0', background: '#f9fafb', color: '#4285F4', fontSize: 11, borderRadius: 20, fontWeight: 500, border: '1px solid #e5e7eb', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+            >
+              <span>Google Mapsで見る</span>
             </button>
           </div>
         </InfoWindow>
       )}
 
-      {/* Left-side overlay controls */}
+      {/* Native Google Maps POI InfoWindow */}
+      {nativePoi && (
+        <InfoWindow
+          position={{ lat: nativePoi.lat, lng: nativePoi.lng }}
+          pixelOffset={[0, -10]}
+          onClose={() => setNativePoi(null)}
+        >
+          <div style={{ minWidth: 160 }}>
+            {loadingPoi
+              ? <p style={{ fontSize: 12, color: '#9ca3af' }}>読み込み中...</p>
+              : <>
+                  <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{nativePoi.name}</p>
+                  {nativePoi.address && (
+                    <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{nativePoi.address}</p>
+                  )}
+                  <button
+                    onClick={() => { setNativePoi(null); onPoiClick(nativePoi.lat, nativePoi.lng, nativePoi.name) }}
+                    style={{ marginTop: 8, width: '100%', padding: '6px 0', background: '#ec4899', color: 'white', fontSize: 12, borderRadius: 20, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                  >
+                    📖 日記を書く
+                  </button>
+                  <button
+                    onClick={() => openInGoogleMaps(nativePoi.lat, nativePoi.lng, nativePoi.placeId)}
+                    style={{ marginTop: 4, width: '100%', padding: '5px 0', background: '#f9fafb', color: '#4285F4', fontSize: 11, borderRadius: 20, fontWeight: 500, border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                  >
+                    Google Mapsで見る
+                  </button>
+                </>
+            }
+          </div>
+        </InfoWindow>
+      )}
+
+      {/* Left overlay controls */}
       <div style={{ position: 'absolute', bottom: 90, left: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 10 }}>
-        {/* Restaurant toggle */}
         <button onClick={() => searchNearby('restaurant')} style={fabStyle(foodMode === 'restaurant', '#ea580c')} title="レストラン">
           {loadingFood && foodMode === 'restaurant'
             ? <div style={{ width: 18, height: 18, border: '2px solid #ea580c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
             : <Utensils size={18} color={foodMode === 'restaurant' ? 'white' : '#ea580c'} />
           }
         </button>
-        {/* Cafe toggle */}
         <button onClick={() => searchNearby('cafe')} style={fabStyle(foodMode === 'cafe', '#7c3aed')} title="カフェ">
           {loadingFood && foodMode === 'cafe'
             ? <div style={{ width: 18, height: 18, border: '2px solid #7c3aed', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
             : <Coffee size={18} color={foodMode === 'cafe' ? 'white' : '#7c3aed'} />
           }
         </button>
-        {/* Diary pins toggle */}
         <button onClick={() => setShowDiaryPins(v => !v)} style={fabStyle(false, '#ec4899')} title="記録ピン切替">
           {showDiaryPins
             ? <MapPin size={18} color="#ec4899" />
@@ -303,9 +379,9 @@ export function MapView({
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes locPulse {
-          0%   { transform: scale(0.8); opacity: 0.8 }
-          70%  { transform: scale(1.6); opacity: 0.2 }
-          100% { transform: scale(1.8); opacity: 0 }
+          0%   { transform: scale(0.9); opacity: 0.9 }
+          70%  { transform: scale(1.8); opacity: 0.15 }
+          100% { transform: scale(2);   opacity: 0 }
         }
       `}</style>
     </Map>

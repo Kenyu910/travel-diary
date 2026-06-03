@@ -10,10 +10,11 @@ type Props = {
   onEdit: () => void
   onDelete: () => void
   onClose: () => void
+  onFlyTo?: (lat: number, lng: number) => void
   calendarSync?: boolean
 }
 
-export function EntryDetail({ entry, onEdit, onDelete, onClose: _, calendarSync }: Props) {
+export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo, calendarSync }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const handleShare = async () => {
@@ -111,9 +112,17 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _, calendarSync 
           </div>
         )}
 
-        <p className="text-xs text-gray-300 text-center pt-1">
-          {entry.lat.toFixed(5)}, {entry.lng.toFixed(5)}
-        </p>
+        {/* Tappable location → fly to map */}
+        <button
+          onClick={() => onFlyTo?.(entry.lat, entry.lng)}
+          className="flex items-center justify-center gap-1.5 mx-auto mt-1 px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100 active:bg-gray-100"
+        >
+          <MapPin size={13} className="text-pink-400" />
+          <span className="text-xs text-gray-400">
+            {entry.lat.toFixed(4)}, {entry.lng.toFixed(4)}
+          </span>
+          <span className="text-xs text-pink-400 font-medium">マップで見る</span>
+        </button>
       </div>
 
       {lightboxIndex !== null && (

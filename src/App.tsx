@@ -303,7 +303,8 @@ function AppContent() {
             onEdit={() => setSheet('edit')}
             onDelete={handleDelete}
             onClose={closeSheet}
-            calendarSync={settings.calendarSync} />
+            calendarSync={settings.calendarSync}
+            onFlyTo={(lat, lng) => mapRef.current?.panTo({ lat, lng })} />
         )}
         {sheet === 'edit' && selectedEntry && (
           <EntryForm lat={selectedEntry.lat} lng={selectedEntry.lng}

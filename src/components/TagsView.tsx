@@ -13,6 +13,7 @@ type Props = {
 export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Props) {
   const { tags: globalTags, addTag, removeTag } = useGlobalTags()
   const [newTagInput, setNewTagInput] = useState('')
+  const [showAddInput, setShowAddInput] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const tagMap = new Map<string, Entry[]>()
@@ -49,23 +50,38 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
       <div className="mb-5">
         <h2 className="text-base font-bold text-gray-700 mb-3">タグ管理</h2>
 
-        {/* Add new tag */}
-        <div className="flex gap-2 mb-3">
-          <input
-            value={newTagInput}
-            onChange={e => setNewTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-            placeholder="新しいタグを追加..."
-            autoComplete="off"
-            className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-          />
+        {/* Add new tag — collapsed by default */}
+        {showAddInput ? (
+          <div className="flex gap-2 mb-3">
+            <input
+              value={newTagInput}
+              onChange={e => setNewTagInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAddTag() }
+                if (e.key === 'Escape') setShowAddInput(false)
+              }}
+              placeholder="タグ名を入力..."
+              autoComplete="off"
+              autoFocus
+              className="flex-1 bg-gray-50 border border-purple-200 rounded-2xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
+            />
+            <button onClick={handleAddTag}
+              className="w-10 h-10 rounded-2xl bg-purple-400 text-white flex items-center justify-center">
+              <Plus size={18} />
+            </button>
+            <button onClick={() => { setShowAddInput(false); setNewTagInput('') }}
+              className="w-10 h-10 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center">
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={handleAddTag}
-            className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center"
+            onClick={() => setShowAddInput(true)}
+            className="flex items-center gap-2 w-full px-3 py-2.5 mb-3 text-sm text-purple-500 bg-purple-50 border border-purple-200 rounded-2xl"
           >
-            <Plus size={18} />
+            <Plus size={15} /> タグを追加する
           </button>
-        </div>
+        )}
 
         {/* Global tags list */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
