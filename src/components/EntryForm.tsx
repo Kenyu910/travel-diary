@@ -21,6 +21,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
   const [selectedTags, setSelectedTags] = useState<string[]>(initial?.tags ?? [])
+  const [showTagPicker, setShowTagPicker] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [rating, setRating] = useState<number>(initial?.rating ?? 0)
@@ -111,44 +112,65 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         />
       </div>
 
-      {/* Tags — tap to select from global list */}
+      {/* Tags — collapsible dropdown */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
-          <Tag size={11} /> タグ
+          <Tag size={11} /> タグ（任意）
         </label>
-        {/* Global tag chips */}
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {globalTags.map(tag => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleTag(tag)}
-              className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                selectedTags.includes(tag)
-                  ? 'bg-purple-400 text-white border-purple-400'
-                  : 'bg-white text-purple-500 border-purple-200'
-              }`}
-            >
-              #{tag}
-            </button>
-          ))}
-        </div>
-        {/* Add new tag */}
-        <div className="flex gap-2">
-          <input
-            value={newTagInput}
-            onChange={e => setNewTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddNewTag() } }}
-            className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-            placeholder="新しいタグを追加..."
-          />
-          <button
-            type="button" onClick={handleAddNewTag}
-            className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center"
-          >
-            <Plus size={18} />
-          </button>
-        </div>
+        {/* Selected tags display */}
+        {selectedTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {selectedTags.map(tag => (
+              <span key={tag} className="flex items-center gap-1 bg-purple-400 text-white text-sm px-3 py-1 rounded-full">
+                #{tag}
+                <button type="button" onClick={() => toggleTag(tag)}>
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Toggle dropdown */}
+        <button
+          type="button"
+          onClick={() => setShowTagPicker(v => !v)}
+          className="flex items-center gap-2 text-sm text-purple-500 px-3 py-2 bg-purple-50 rounded-2xl border border-purple-200 w-full"
+        >
+          <Tag size={13} />
+          <span>{showTagPicker ? 'タグを閉じる ▲' : 'タグを選択 ▼'}</span>
+        </button>
+        {/* Dropdown tag picker */}
+        {showTagPicker && (
+          <div className="mt-2 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {globalTags.map(tag => (
+                <button
+                  key={tag} type="button" onClick={() => toggleTag(tag)}
+                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                    selectedTags.includes(tag)
+                      ? 'bg-purple-400 text-white border-purple-400'
+                      : 'bg-white text-purple-500 border-purple-200'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-1">
+              <input
+                value={newTagInput}
+                onChange={e => setNewTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddNewTag() } }}
+                className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+                placeholder="新しいタグを追加..."
+              />
+              <button type="button" onClick={handleAddNewTag}
+                className="w-9 h-9 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center">
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Rating */}

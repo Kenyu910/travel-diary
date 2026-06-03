@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Share2, MapPin, Calendar, Tag } from 'lucide-react'
+import { Pencil, Trash2, Share2, MapPin, Calendar, Tag, CalendarPlus } from 'lucide-react'
 import { Lightbox } from './Lightbox'
 import { StarRating } from './StarRating'
+import { addEntryToCalendar } from '../utils/calendarSync'
 import type { Entry } from '../types'
 
 type Props = {
@@ -9,9 +10,10 @@ type Props = {
   onEdit: () => void
   onDelete: () => void
   onClose: () => void
+  calendarSync?: boolean
 }
 
-export function EntryDetail({ entry, onEdit, onDelete, onClose: _ }: Props) {
+export function EntryDetail({ entry, onEdit, onDelete, onClose: _, calendarSync }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const handleShare = async () => {
@@ -32,6 +34,13 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _ }: Props) {
           className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200">
           <Share2 size={16} />
         </button>
+        {calendarSync && (
+          <button onClick={() => addEntryToCalendar(entry)}
+            className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-400 active:bg-blue-100"
+            title="カレンダーに追加">
+            <CalendarPlus size={16} />
+          </button>
+        )}
         <button onClick={onEdit}
           className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center text-purple-400 active:bg-purple-100">
           <Pencil size={16} />

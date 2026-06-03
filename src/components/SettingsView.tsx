@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import {
   User, Palette, Map, Database, Info, Edit3, LayoutGrid, List,
   Clock, CalendarDays, Lightbulb, Download, Upload, HardDrive,
-  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
+  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image, CalendarPlus
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
 import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
@@ -194,6 +194,9 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         />
         <Row icon={Lightbulb} label="ヒントを表示" sub="マップ上の案内メッセージ"
           right={<Toggle value={settings.showHint} onChange={v => update({ showHint: v })} />}
+        />
+        <Row icon={CalendarPlus} label="iPhoneカレンダー連携" sub="日記の詳細からカレンダーに追加"
+          right={<Toggle value={settings.calendarSync ?? false} onChange={v => update({ calendarSync: v })} />}
         />
       </Card>
 
