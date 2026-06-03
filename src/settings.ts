@@ -58,21 +58,36 @@ export const MAP_TILES: Record<MapStyle, { url: string; attribution: string; lab
   standard: {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    label: '🗺️ 標準',
+    label: '標準',
   },
   watercolor: {
     url: 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>',
-    label: '🎨 水彩画',
+    label: '水彩画',
   },
   toner: {
     url: 'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>',
-    label: '🖤 モノクロ',
+    label: 'モノクロ',
   },
 }
 
 export const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: '2026-06-04',
+    title: 'Lucideアイコン・新機能・バグ修正',
+    changes: [
+      '📅 カレンダービュー（月別記録一覧）',
+      '🖼️ 写真ライトボックス（フルスクリーン表示）',
+      '🔗 Web Share APIで記録をシェア',
+      '🗺️ マップ上でタグ・検索フィルタリング',
+      '🎨 絵文字をLucideアイコンに統一',
+      '🐛 マップ設定変更の即時反映を修正',
+      '🐛 タブとシートの同期ズレを修正',
+      '🐛 インポート後の日付ソートを修正',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-06-04',

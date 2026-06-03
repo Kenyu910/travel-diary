@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus } from 'lucide-react'
 import type { Entry } from '../types'
 
 type Props = {
@@ -29,9 +30,7 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     files.forEach(file => {
-      if (file.size > 500_000) {
-        alert(`「${file.name}」は500KB超です。多数の写真を保存するとデータが失われる場合があります。`)
-      }
+      if (file.size > 500_000) alert(`「${file.name}」は500KB超です。多数保存するとデータが失われる場合があります。`)
       const reader = new FileReader()
       reader.onload = ev => {
         if (ev.target?.result) setPhotos(prev => [...prev, ev.target!.result as string])
@@ -46,55 +45,48 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
     if (!title.trim()) return
     onSave({
       id: initial?.id ?? uuidv4(),
-      title: title.trim(),
-      body,
-      date,
-      lat,
-      lng,
-      placeName,
-      tags,
-      photos,
+      title: title.trim(), body, date, lat, lng, placeName, tags, photos,
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-2 pb-6 gap-4">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-bold text-gray-700">
-          {initial ? '✏️ 編集' : '📍 新しい記録'}
-        </h2>
-        <button type="button" onClick={onCancel} className="text-gray-400 text-2xl leading-none">×</button>
+    <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-3 pb-8 gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-gray-700">{initial ? '記録を編集' : '新しい記録'}</h2>
+        <button type="button" onClick={onCancel} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+          <X size={16} />
+        </button>
       </div>
 
       {/* Title */}
       <div>
-        <label className="text-xs font-medium text-gray-500 mb-1.5 block">タイトル *</label>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 block">タイトル *</label>
         <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
+          value={title} onChange={e => setTitle(e.target.value)}
           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-          placeholder="どんな場所でしたか？"
-          required
+          placeholder="どんな場所でしたか？" required
         />
       </div>
 
       {/* Date + Place */}
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">📅 日付</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+            <Calendar size={11} /> 日付
+          </label>
           <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
+            type="date" value={date} onChange={e => setDate(e.target.value)}
             className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">📍 場所名</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+            <MapPin size={11} /> 場所名
+          </label>
           <input
-            value={placeName}
-            onChange={e => setPlaceName(e.target.value)}
+            value={placeName} onChange={e => setPlaceName(e.target.value)}
             className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
             placeholder="渋谷駅前"
           />
@@ -103,11 +95,11 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
 
       {/* Memo */}
       <div>
-        <label className="text-xs font-medium text-gray-500 mb-1.5 block">📝 メモ</label>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <FileText size={11} /> メモ
+        </label>
         <textarea
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          rows={4}
+          value={body} onChange={e => setBody(e.target.value)} rows={4}
           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 resize-none"
           placeholder="この場所の思い出を書いてみよう..."
         />
@@ -115,29 +107,28 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
 
       {/* Tags */}
       <div>
-        <label className="text-xs font-medium text-gray-500 mb-1.5 block">🏷️ タグ</label>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <Tag size={11} /> タグ
+        </label>
         <div className="flex gap-2 mb-2">
           <input
-            value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
+            value={tagInput} onChange={e => setTagInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
             className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-            placeholder="グルメ, 旅行..."
+            placeholder="グルメ、旅行..."
           />
-          <button
-            type="button"
-            onClick={addTag}
-            className="px-4 py-3 bg-purple-100 text-purple-500 rounded-2xl text-sm font-medium"
-          >
-            追加
+          <button type="button" onClick={addTag}
+            className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center">
+            <Plus size={18} />
           </button>
         </div>
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 bg-purple-50 text-purple-400 text-xs px-3 py-1.5 rounded-full">
+              <span key={tag} className="flex items-center gap-1 bg-purple-50 text-purple-500 text-xs px-3 py-1.5 rounded-full">
                 #{tag}
-                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="text-purple-300 hover:text-purple-500">×</button>
+                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))}
+                  className="text-purple-300 hover:text-purple-500"><X size={11} /></button>
               </span>
             ))}
           </div>
@@ -146,13 +137,12 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
 
       {/* Photos */}
       <div>
-        <label className="text-xs font-medium text-gray-500 mb-1.5 block">🖼️ 写真</label>
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="w-full py-3 border-2 border-dashed border-pink-200 rounded-2xl text-sm text-pink-400 bg-pink-50 hover:bg-pink-100 transition-colors"
-        >
-          + 写真を追加
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <Image size={11} /> 写真
+        </label>
+        <button type="button" onClick={() => fileRef.current?.click()}
+          className="w-full py-3 border-2 border-dashed border-pink-200 rounded-2xl text-sm text-pink-400 bg-pink-50 flex items-center justify-center gap-2">
+          <Plus size={15} /> 写真を追加
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhoto} className="hidden" />
         {photos.length > 0 && (
@@ -160,12 +150,9 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
             {photos.map((p, i) => (
               <div key={i} className="relative">
                 <img src={p} className="w-20 h-20 object-cover rounded-xl" />
-                <button
-                  type="button"
-                  onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
-                  className="absolute -top-1.5 -right-1.5 bg-red-400 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow"
-                >
-                  ×
+                <button type="button" onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow">
+                  <X size={10} />
                 </button>
               </div>
             ))}
@@ -173,15 +160,11 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
         )}
       </div>
 
-      <p className="text-xs text-gray-300 text-center">
-        {lat.toFixed(5)}, {lng.toFixed(5)}
-      </p>
+      <p className="text-xs text-gray-300 text-center">{lat.toFixed(5)}, {lng.toFixed(5)}</p>
 
-      <button
-        type="submit"
-        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold text-base shadow-md shadow-pink-200 active:scale-95 transition-transform"
-      >
-        💾 保存する
+      <button type="submit"
+        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold text-base shadow-md shadow-pink-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
+        <Save size={18} /> 保存する
       </button>
     </form>
   )
