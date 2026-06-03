@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus } from 'lucide-react'
+import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star } from 'lucide-react' // X kept for tag removal
+import { StarRating } from './StarRating'
 import type { Entry } from '../types'
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
   initial?: Entry
 }
 
-export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
+export function EntryForm({ lat, lng, onSave, onCancel: _, initial }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
@@ -19,6 +20,7 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
+  const [rating, setRating] = useState<number>(initial?.rating ?? 0)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const addTag = () => {
@@ -45,21 +47,13 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
     if (!title.trim()) return
     onSave({
       id: initial?.id ?? uuidv4(),
-      title: title.trim(), body, date, lat, lng, placeName, tags, photos,
+      title: title.trim(), body, date, lat, lng, placeName, tags, photos, rating,
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-3 pb-8 gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-gray-700">{initial ? '記録を編集' : '新しい記録'}</h2>
-        <button type="button" onClick={onCancel} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-          <X size={16} />
-        </button>
-      </div>
-
+    <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-1 pb-8 gap-4">
       {/* Title */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 block">タイトル *</label>
@@ -91,6 +85,14 @@ export function EntryForm({ lat, lng, onSave, onCancel, initial }: Props) {
             placeholder="渋谷駅前"
           />
         </div>
+      </div>
+
+      {/* Rating */}
+      <div>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+          <Star size={11} /> 評価
+        </label>
+        <StarRating value={rating} onChange={setRating} size={28} />
       </div>
 
       {/* Memo */}

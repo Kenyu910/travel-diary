@@ -74,6 +74,21 @@ export const MAP_TILES: Record<MapStyle, { url: string; attribution: string; lab
 
 export const CHANGELOG = [
   {
+    version: '1.4.0',
+    date: '2026-06-04',
+    title: 'アイコン刷新・星評価・バグ大修正',
+    changes: [
+      '🎨 フォーク＋日記テーマのオリジナルアイコン',
+      '📲 PWAインストール対応（ホーム画面追加）',
+      '⭐ 星評価機能（1〜5）',
+      '📍 現在地から即追加ボタン（マップ上）',
+      '🐛 設定の項目がタップできない問題を修正',
+      '🐛 シートを閉じられない問題を修正',
+      '🐛 マップ検索でスタックする問題を修正',
+      '🐛 タブとシートの同期を全面修正',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-06-04',
     title: 'Lucideアイコン・新機能・バグ修正',

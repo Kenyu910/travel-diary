@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B9D"/>
+      <stop offset="45%" stop-color="#FF8562"/>
+      <stop offset="100%" stop-color="#FFBF47"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="60%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="115" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="115" fill="url(#shine)"/>
+
+  <!-- ===== FORK (left, centered at x=180) ===== -->
+  <!-- Tine 1 -->
+  <rect x="148" y="100" width="20" height="96" rx="10" fill="white"/>
+  <!-- Tine 2 -->
+  <rect x="178" y="100" width="20" height="96" rx="10" fill="white"/>
+  <!-- Tine 3 -->
+  <rect x="208" y="100" width="20" height="96" rx="10" fill="white"/>
+  <!-- Shoulder: converges tines → handle -->
+  <path d="M148 190 Q144 248 172 262 L172 408 Q172 420 183 420 Q194 420 194 408 L194 262 Q222 248 228 190 Z" fill="white"/>
+
+  <!-- ===== OPEN BOOK / DIARY (right side) ===== -->
+  <!-- Left page -->
+  <rect x="266" y="196" width="80" height="148" rx="10" fill="white"/>
+  <!-- Right page -->
+  <rect x="358" y="196" width="80" height="148" rx="10" fill="white"/>
+  <!-- Spine highlight (center seam) -->
+  <rect x="341" y="194" width="22" height="152" rx="5" fill="rgba(255,255,255,0.85)"/>
+
+  <!-- Text lines — right page -->
+  <rect x="370" y="234" width="54" height="8" rx="4" fill="rgba(255,107,157,0.45)"/>
+  <rect x="370" y="254" width="44" height="8" rx="4" fill="rgba(255,107,157,0.32)"/>
+  <rect x="370" y="274" width="50" height="8" rx="4" fill="rgba(255,107,157,0.45)"/>
+  <rect x="370" y="294" width="38" height="8" rx="4" fill="rgba(255,107,157,0.32)"/>
+  <rect x="370" y="314" width="46" height="8" rx="4" fill="rgba(255,107,157,0.25)"/>
+
+  <!-- Text lines — left page -->
+  <rect x="278" y="234" width="54" height="8" rx="4" fill="rgba(255,107,157,0.45)"/>
+  <rect x="278" y="254" width="44" height="8" rx="4" fill="rgba(255,107,157,0.32)"/>
+  <rect x="278" y="274" width="50" height="8" rx="4" fill="rgba(255,107,157,0.45)"/>
+  <rect x="278" y="294" width="38" height="8" rx="4" fill="rgba(255,107,157,0.32)"/>
+</svg>

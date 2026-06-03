@@ -34,28 +34,45 @@ function Card({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Bug fix: Row is now a <div>, not a <button>, to avoid nested button HTML issues
+// onClick on the whole row only used when there's no interactive right content
 function Row({
-  icon: Icon, label, sub, right, onClick, danger,
+  icon: Icon, label, sub, right, onRowClick, danger,
 }: {
-  icon: React.ElementType; label: string; sub?: string; right?: React.ReactNode; onClick?: () => void; danger?: boolean
+  icon: React.ElementType
+  label: string
+  sub?: string
+  right?: React.ReactNode
+  onRowClick?: () => void
+  danger?: boolean
 }) {
   return (
-    <button onClick={onClick} disabled={!onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 text-left ${onClick ? 'active:bg-gray-50' : 'cursor-default'}`}>
-      <Icon size={18} className={danger ? 'text-red-400' : 'text-gray-400'} />
+    <div
+      onClick={onRowClick}
+      className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 ${
+        onRowClick ? 'cursor-pointer active:bg-gray-50' : ''
+      }`}
+    >
+      <Icon size={18} className={`flex-shrink-0 ${danger ? 'text-red-400' : 'text-gray-400'}`} />
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${danger ? 'text-red-400' : 'text-gray-700'}`}>{label}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+        {sub && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{sub}</p>}
       </div>
-      {right ?? (onClick && <ChevronRight size={15} className="text-gray-300" />)}
-    </button>
+      {right ? (
+        <div className="flex-shrink-0">{right}</div>
+      ) : (
+        onRowClick && <ChevronRight size={15} className="text-gray-300 flex-shrink-0" />
+      )}
+    </div>
   )
 }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!value)}
-      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${value ? 'bg-pink-400' : 'bg-gray-200'}`}>
+    <button
+      onClick={() => onChange(!value)}
+      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${value ? 'bg-pink-400' : 'bg-gray-200'}`}
+    >
       <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </button>
   )
@@ -71,8 +88,13 @@ function SegmentControl<T extends string>({ options, value, onChange }: {
       {options.map(o => {
         const Icon = o.icon
         return (
-          <button key={o.value} onClick={() => onChange(o.value)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl transition-colors ${value === o.value ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl transition-colors ${
+              value === o.value ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'
+            }`}
+          >
             {Icon && <Icon size={11} />}
             {o.label}
           </button>
@@ -111,7 +133,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
   const displayName = settings.userName || 'ゲスト'
 
   return (
-    <div className="pb-10 pt-2">
+    <div className="pb-10">
       {/* Profile */}
       <div className="flex flex-col items-center py-5">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center mb-2 shadow-sm">
@@ -122,11 +144,11 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 px-4 mb-2">
+      <div className="grid grid-cols-3 gap-3 px-4 mb-1">
         {[
-          { Icon: MapPin, value: totalEntries, label: '記録', color: 'text-pink-400' },
+          { Icon: MapPin, value: totalEntries, label: '記録',  color: 'text-pink-400'   },
           { Icon: Tag,    value: totalTags,    label: 'タグ',  color: 'text-purple-400' },
-          { Icon: Image,  value: totalPhotos,  label: '写真',  color: 'text-blue-400' },
+          { Icon: Image,  value: totalPhotos,  label: '写真',  color: 'text-blue-400'   },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl py-3.5 text-center border border-gray-100">
             <s.Icon size={20} className={`${s.color} mx-auto mb-1`} />
@@ -140,73 +162,97 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
       <SectionHeader icon={User} title="プロフィール" />
       <Card>
         <div className="px-4 py-3.5 flex items-center gap-3">
-          <Edit3 size={18} className="text-gray-400" />
+          <Edit3 size={18} className="text-gray-400 flex-shrink-0" />
           <input
-            value={settings.userName} onChange={e => update({ userName: e.target.value })}
+            value={settings.userName}
+            onChange={e => update({ userName: e.target.value })}
             placeholder="名前を入力"
             className="flex-1 text-sm text-gray-700 placeholder-gray-300 focus:outline-none bg-transparent"
           />
         </div>
       </Card>
 
-      {/* Display settings */}
+      {/* Display */}
       <SectionHeader icon={Palette} title="表示設定" />
       <Card>
         <Row icon={LayoutGrid} label="記録の表示形式"
           right={<SegmentControl<ListStyle>
-            options={[{ value: 'card', label: 'カード', icon: LayoutGrid }, { value: 'compact', label: 'コンパクト', icon: List }]}
+            options={[
+              { value: 'card',    label: 'カード',    icon: LayoutGrid },
+              { value: 'compact', label: 'コンパクト', icon: List },
+            ]}
             value={settings.listStyle} onChange={v => update({ listStyle: v })} />}
         />
         <Row icon={Clock} label="並び順のデフォルト"
           right={<SegmentControl
-            options={[{ value: 'newest', label: '新しい順', icon: Clock }, { value: 'oldest', label: '古い順', icon: CalendarDays }]}
-            value={settings.defaultSort} onChange={v => update({ defaultSort: v as any })} />}
+            options={[
+              { value: 'newest', label: '新しい順', icon: Clock },
+              { value: 'oldest', label: '古い順',   icon: CalendarDays },
+            ]}
+            value={settings.defaultSort}
+            onChange={v => update({ defaultSort: v as any })} />}
         />
-        <Row icon={Lightbulb} label="ヒントを表示" sub="「タップして記録を追加」を表示"
+        <Row icon={Lightbulb} label="ヒントを表示" sub="マップ上の案内メッセージ"
           right={<Toggle value={settings.showHint} onChange={v => update({ showHint: v })} />}
         />
       </Card>
 
-      {/* Map settings */}
+      {/* Map */}
       <SectionHeader icon={Map} title="マップ設定" />
       <Card>
         <Row icon={Palette} label="マップスタイル"
           right={<SegmentControl<MapStyle>
-            options={(Object.keys(MAP_TILES) as MapStyle[]).map(k => ({ value: k, label: MAP_TILES[k].label }))}
+            options={(Object.keys(MAP_TILES) as MapStyle[]).map(k => ({
+              value: k, label: MAP_TILES[k].label,
+            }))}
             value={settings.mapStyle} onChange={v => update({ mapStyle: v })} />}
         />
-        <Row icon={LocateFixed} label="デフォルト表示位置"
+        <Row
+          icon={LocateFixed} label="デフォルト表示位置"
           sub={`${settings.defaultLat.toFixed(3)}, ${settings.defaultLng.toFixed(3)}`}
-          right={<button onClick={() => navigator.geolocation.getCurrentPosition(
-            p => { update({ defaultLat: p.coords.latitude, defaultLng: p.coords.longitude }); alert('✅ 現在地を設定しました') },
-            () => alert('位置情報の取得に失敗しました')
-          )} className="text-xs text-pink-400 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 whitespace-nowrap">現在地に設定</button>}
+          right={
+            <button
+              onClick={() => navigator.geolocation.getCurrentPosition(
+                p => { update({ defaultLat: p.coords.latitude, defaultLng: p.coords.longitude }); alert('✅ 現在地を設定しました') },
+                () => alert('位置情報の取得に失敗しました')
+              )}
+              className="text-xs text-pink-400 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 whitespace-nowrap"
+            >
+              現在地に設定
+            </button>
+          }
         />
         <Row icon={ZoomIn} label="デフォルトズーム"
           right={
             <div className="flex items-center gap-2">
-              <button onClick={() => update({ defaultZoom: Math.max(5, settings.defaultZoom - 1) })}
-                className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-lg flex items-center justify-center leading-none">−</button>
+              <button
+                onClick={() => update({ defaultZoom: Math.max(5, settings.defaultZoom - 1) })}
+                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold text-xl flex items-center justify-center leading-none"
+              >−</button>
               <span className="text-sm font-semibold text-gray-700 w-5 text-center">{settings.defaultZoom}</span>
-              <button onClick={() => update({ defaultZoom: Math.min(18, settings.defaultZoom + 1) })}
-                className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-lg flex items-center justify-center leading-none">+</button>
+              <button
+                onClick={() => update({ defaultZoom: Math.min(18, settings.defaultZoom + 1) })}
+                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold text-xl flex items-center justify-center leading-none"
+              >+</button>
             </div>
           }
         />
       </Card>
 
-      {/* Data management */}
+      {/* Data */}
       <SectionHeader icon={Database} title="データ管理" />
       <Card>
-        <Row icon={Download} label="データをエクスポート" sub="JSON形式でバックアップ" onClick={onExport} />
-        <Row icon={Upload} label="データをインポート" sub="JSONファイルから復元・マージ" onClick={() => importRef.current?.click()} />
+        <Row icon={Download}   label="データをエクスポート" sub="JSON形式でバックアップ"         onRowClick={onExport} />
+        <Row icon={Upload}     label="データをインポート"   sub="JSONファイルから復元・マージ"   onRowClick={() => importRef.current?.click()} />
         <input ref={importRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-        <Row icon={HardDrive} label="使用ストレージ" sub={`約 ${storageKB} KB 使用中`} />
-        <Row icon={Trash2} label="全データを削除" danger onClick={() => {
-          if (confirm('⚠️ すべての記録を削除しますか？\nこの操作は取り消せません。')) {
-            if (confirm('本当に削除しますか？')) onClearAll()
-          }
-        }} />
+        <Row icon={HardDrive}  label="使用ストレージ"       sub={`約 ${storageKB} KB 使用中`} />
+        <Row icon={Trash2}     label="全データを削除"       danger
+          onRowClick={() => {
+            if (confirm('⚠️ すべての記録を削除しますか？\nこの操作は取り消せません。')) {
+              if (confirm('本当に削除しますか？')) onClearAll()
+            }
+          }}
+        />
       </Card>
 
       {/* Changelog */}
@@ -233,11 +279,12 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         ))}
       </Card>
 
-      {/* Footer */}
-      <div className="text-center mt-6">
-        <p className="text-xs text-gray-300">旅日記 v1.3.0</p>
-        <button onClick={() => { if (confirm('設定をリセットしますか？')) update({ ...DEFAULT_SETTINGS }) }}
-          className="flex items-center gap-1.5 text-xs text-gray-300 mt-3 mx-auto">
+      <div className="text-center mt-6 mb-2">
+        <p className="text-xs text-gray-300">旅日記 v1.4.0</p>
+        <button
+          onClick={() => { if (confirm('設定をリセットしますか？')) update({ ...DEFAULT_SETTINGS }) }}
+          className="flex items-center gap-1.5 text-xs text-gray-300 mt-3 mx-auto"
+        >
           <RotateCcw size={11} /> 設定をリセット
         </button>
       </div>

@@ -9,4 +9,5 @@ export type Entry = {
   tags: string[]
   photos: string[]
   createdAt: string
+  rating?: number  // 1–5 (optional, backward compatible)
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ArrowLeft, Pencil, Trash2, Share2, MapPin, Calendar, Tag } from 'lucide-react'
+import { Pencil, Trash2, Share2, MapPin, Calendar, Tag } from 'lucide-react'
 import { Lightbox } from './Lightbox'
+import { StarRating } from './StarRating'
 import type { Entry } from '../types'
 
 type Props = {
@@ -10,11 +11,11 @@ type Props = {
   onClose: () => void
 }
 
-export function EntryDetail({ entry, onEdit, onDelete, onClose }: Props) {
+export function EntryDetail({ entry, onEdit, onDelete, onClose: _ }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const handleShare = async () => {
-    const text = `${entry.title}\n${entry.date}${entry.placeName ? ` · ${entry.placeName}` : ''}\n${entry.body ?? ''}`
+    const text = `${entry.title}\n${entry.date}${entry.placeName ? ` · ${entry.placeName}` : ''}${entry.body ? `\n${entry.body}` : ''}`
     if (navigator.share) {
       await navigator.share({ title: entry.title, text }).catch(() => {})
     } else {
@@ -25,31 +26,26 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose }: Props) {
 
   return (
     <div className="flex flex-col pb-8">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-3">
-        <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-          <ArrowLeft size={18} />
+      {/* Action buttons (close button is in BottomSheet header) */}
+      <div className="flex items-center justify-end gap-2 px-4 pb-3">
+        <button onClick={handleShare}
+          className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200">
+          <Share2 size={16} />
         </button>
-        <div className="flex gap-2">
-          <button onClick={handleShare}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-            <Share2 size={16} />
-          </button>
-          <button onClick={onEdit}
-            className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center text-purple-400">
-            <Pencil size={16} />
-          </button>
-          <button onClick={onDelete}
-            className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-red-400">
-            <Trash2 size={16} />
-          </button>
-        </div>
+        <button onClick={onEdit}
+          className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center text-purple-400 active:bg-purple-100">
+          <Pencil size={16} />
+        </button>
+        <button onClick={onDelete}
+          className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-red-400 active:bg-red-100">
+          <Trash2 size={16} />
+        </button>
       </div>
 
       {/* Hero photo */}
       {entry.photos.length > 0 && (
         <div className="px-4 mb-4">
-          <button onClick={() => setLightboxIndex(0)} className="w-full">
+          <button onClick={() => setLightboxIndex(0)} className="w-full block">
             <img src={entry.photos[0]} className="w-full h-52 object-cover rounded-3xl shadow-sm" />
           </button>
         </div>
@@ -71,12 +67,19 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose }: Props) {
           </div>
         </div>
 
+        {/* Rating */}
+        {(entry.rating ?? 0) > 0 && (
+          <StarRating value={entry.rating!} readonly size={20} />
+        )}
+
         {/* Tags */}
         {entry.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 items-center">
             <Tag size={13} className="text-gray-300" />
             {entry.tags.map(tag => (
-              <span key={tag} className="bg-purple-50 text-purple-500 text-xs px-3 py-1.5 rounded-full">#{tag}</span>
+              <span key={tag} className="bg-purple-50 text-purple-500 text-xs px-3 py-1.5 rounded-full">
+                #{tag}
+              </span>
             ))}
           </div>
         )}
@@ -88,11 +91,11 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose }: Props) {
           </p>
         )}
 
-        {/* Photo grid */}
+        {/* Extra photos */}
         {entry.photos.length > 1 && (
           <div className="grid grid-cols-3 gap-2">
             {entry.photos.slice(1).map((p, i) => (
-              <button key={i} onClick={() => setLightboxIndex(i + 1)}>
+              <button key={i} onClick={() => setLightboxIndex(i + 1)} className="block">
                 <img src={p} className="w-full aspect-square object-cover rounded-xl" />
               </button>
             ))}
@@ -104,7 +107,6 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose }: Props) {
         </p>
       </div>
 
-      {/* Lightbox */}
       {lightboxIndex !== null && (
         <Lightbox
           photos={entry.photos}
