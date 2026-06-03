@@ -186,6 +186,8 @@ function AppContent() {
   return (
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
       <div className="flex-1 relative overflow-hidden">
+        {/* Map is always mounted to preserve state, but visually hidden on other tabs */}
+        <div className={`absolute inset-0 ${tab !== 'map' ? 'invisible' : ''}`}>
         <MapErrorBoundary>
           <MapView
             entries={entries}
@@ -199,9 +201,10 @@ function AppContent() {
             mapRef={mapRef}
           />
         </MapErrorBoundary>
+        </div>
 
-        {/* Title pill + search bar — stacked below safe area */}
-        {sheet === null && (
+        {/* Title pill + search bar — only on map tab */}
+        {tab === 'map' && sheet === null && (
           <div
             className="absolute left-0 right-0 z-10 px-4 flex flex-col gap-2"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
@@ -219,8 +222,8 @@ function AppContent() {
           </div>
         )}
 
-        {/* FAB buttons */}
-        {sheet === null && (
+        {/* FAB buttons — only on map tab */}
+        {tab === 'map' && sheet === null && (
           <div className="absolute bottom-14 right-4 z-10 flex flex-col gap-2">
             <button
               onClick={handleQuickAdd}
@@ -239,7 +242,7 @@ function AppContent() {
           </div>
         )}
 
-        {settings.showHint && sheet === null && (
+        {settings.showHint && tab === 'map' && sheet === null && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
             <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm text-xs text-gray-400 border border-gray-100/50">
               タップして記録を追加

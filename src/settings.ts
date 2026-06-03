@@ -62,6 +62,29 @@ export const MAP_STYLES: Record<MapStyle, { label: string; mapTypeId: string }> 
 
 export const CHANGELOG = [
   {
+    version: '1.6.1',
+    date: '2026-06-04',
+    title: 'タグタブ管理・UI改善',
+    changes: [
+      '🏷️ タグタブからタグを作成・削除できるように',
+      '🗺️ マップタブ以外でGoogle Mapsを非表示に',
+      '📍 日記カードに店舗名を目立つ表示',
+    ],
+  },
+  {
+    version: '1.6.0',
+    date: '2026-06-04',
+    title: 'グルメモード・タグ選択式・場所自動入力',
+    changes: [
+      '🍽️ グルメモード: 周辺飲食店をマップに表示',
+      '📖 飲食店タップ → 日記作成（場所名自動入力）',
+      '👁 記録ピンの表示/非表示トグル',
+      '🏷️ タグを事前作成して選択式に変更',
+      '📝 写真・評価・メモはすべて任意',
+      '📍 検索を現在地から近い順に表示',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-06-04',
     title: 'Google Maps に移行',

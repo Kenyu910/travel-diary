@@ -111,11 +111,15 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
               className="text-left bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform">
               {entry.photos.length > 0 && <img src={entry.photos[0]} className="w-full h-36 object-cover" />}
               <div className="p-3.5">
+                {/* Store/place name prominently if exists */}
+                {entry.placeName && (
+                  <div className="flex items-center gap-1 mb-1">
+                    <MapPin size={11} className="text-pink-400 flex-shrink-0" />
+                    <p className="text-xs font-semibold text-pink-500 truncate">{entry.placeName}</p>
+                  </div>
+                )}
                 <p className="font-semibold text-gray-800 text-sm">{entry.title}</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  <span className="flex items-center gap-1 text-xs text-gray-400"><CalendarDays size={10} />{entry.date}</span>
-                  {entry.placeName && <span className="flex items-center gap-1 text-xs text-gray-400"><MapPin size={10} />{entry.placeName}</span>}
-                </div>
+                <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><CalendarDays size={10} />{entry.date}</span>
                 {entry.body && <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{entry.body}</p>}
                 {entry.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
