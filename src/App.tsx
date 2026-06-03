@@ -95,6 +95,15 @@ function AppContent() {
     mapRef.current?.panTo({ lat, lng })
   }, [])
 
+  // POI (restaurant etc.) tapped from food mode
+  const handlePoiClick = useCallback((lat: number, lng: number, name: string) => {
+    setClickedPos({ lat, lng })
+    setClickedPlaceName(name)
+    setSelectedEntry(null)
+    setTab('map')
+    setSheet('form')
+  }, [])
+
   const handleQuickAdd = () => {
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -183,6 +192,7 @@ function AppContent() {
             selectedEntryId={selectedEntry?.id ?? null}
             onSelectEntry={handleSelectEntry}
             onMapClick={handleMapClick}
+            onPoiClick={handlePoiClick}
             settings={settings}
             filterTag={filterTag}
             searchQuery=""
@@ -190,22 +200,22 @@ function AppContent() {
           />
         </MapErrorBoundary>
 
-        {/* Title pill */}
-        {sheet === null && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none safe-top">
-            <div className="bg-white/85 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100/50">
-              <span className="text-sm font-bold text-pink-500">旅日記</span>
-            </div>
-          </div>
-        )}
-
-        {/* Google Places search bar */}
+        {/* Title pill + search bar — stacked below safe area */}
         {sheet === null && (
           <div
-            className="absolute z-10 safe-top"
-            style={{ top: 48, left: 60, right: 16 }}
+            className="absolute left-0 right-0 z-10 px-4 flex flex-col gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
           >
-            <PlacesSearch onPlaceSelected={handlePlaceSelected} />
+            {/* Title */}
+            <div className="flex justify-center pointer-events-none">
+              <div className="bg-white/85 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100/50">
+                <span className="text-sm font-bold text-pink-500">旅日記</span>
+              </div>
+            </div>
+            {/* Search — offset right to avoid zoom controls */}
+            <div className="pl-14 pr-0">
+              <PlacesSearch onPlaceSelected={handlePlaceSelected} />
+            </div>
           </div>
         )}
 

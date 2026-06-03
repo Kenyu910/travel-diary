@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { X, Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2 } from 'lucide-react'
+import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X } from 'lucide-react'
 import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
+import { useGlobalTags } from '../store'
 import type { Entry } from '../types'
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
   onSave: (entry: Entry) => void
   onCancel: () => void
   initial?: Entry
-  defaultPlaceName?: string  // auto-filled from reverse geocoding
+  defaultPlaceName?: string
 }
 
 export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlaceName }: Props) {
@@ -19,23 +20,32 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const [body, setBody] = useState(initial?.body ?? '')
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
-  const [tagInput, setTagInput] = useState('')
-  const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
+  const [selectedTags, setSelectedTags] = useState<string[]>(initial?.tags ?? [])
+  const [newTagInput, setNewTagInput] = useState('')
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [rating, setRating] = useState<number>(initial?.rating ?? 0)
   const [compressing, setCompressing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const addTag = () => {
-    const t = tagInput.trim().replace(/^#/, '')
-    if (t && !tags.includes(t)) setTags(prev => [...prev, t])
-    setTagInput('')
+  const { tags: globalTags, addTag: addGlobalTag } = useGlobalTags()
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    )
   }
 
-  // Fix: compress images before storing to prevent main thread freeze
+  const handleAddNewTag = () => {
+    const t = newTagInput.trim()
+    if (!t) return
+    addGlobalTag(t)
+    setSelectedTags(prev => prev.includes(t) ? prev : [...prev, t])
+    setNewTagInput('')
+  }
+
   const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
-    if (files.length === 0) return
+    if (!files.length) return
     e.target.value = ''
     setCompressing(true)
     try {
@@ -43,8 +53,8 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         const compressed = await compressImage(file)
         setPhotos(prev => [...prev, compressed])
       }
-    } catch (err) {
-      alert('写真の処理に失敗しました。別の画像をお試しください。')
+    } catch {
+      alert('写真の処理に失敗しました。')
     } finally {
       setCompressing(false)
     }
@@ -55,20 +65,23 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
     if (!title.trim()) return
     onSave({
       id: initial?.id ?? uuidv4(),
-      title: title.trim(), body, date, lat, lng, placeName, tags, photos, rating,
+      title: title.trim(), body, date, lat, lng,
+      placeName, tags: selectedTags, photos, rating,
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col px-5 pt-1 pb-8 gap-4">
+
       {/* Title */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 block">タイトル *</label>
         <input
           value={title} onChange={e => setTitle(e.target.value)}
-          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-          placeholder="どんな場所でしたか？" required
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          placeholder="今日の記録タイトル"
+          required
         />
       </div>
 
@@ -98,10 +111,50 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         />
       </div>
 
+      {/* Tags — tap to select from global list */}
+      <div>
+        <label className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
+          <Tag size={11} /> タグ
+        </label>
+        {/* Global tag chips */}
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {globalTags.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                selectedTags.includes(tag)
+                  ? 'bg-purple-400 text-white border-purple-400'
+                  : 'bg-white text-purple-500 border-purple-200'
+              }`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+        {/* Add new tag */}
+        <div className="flex gap-2">
+          <input
+            value={newTagInput}
+            onChange={e => setNewTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddNewTag() } }}
+            className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+            placeholder="新しいタグを追加..."
+          />
+          <button
+            type="button" onClick={handleAddNewTag}
+            className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+      </div>
+
       {/* Rating */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-          <Star size={11} /> 評価
+          <Star size={11} /> 評価（任意）
         </label>
         <StarRating value={rating} onChange={setRating} size={28} />
       </div>
@@ -109,49 +162,19 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
       {/* Memo */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-          <FileText size={11} /> メモ
+          <FileText size={11} /> メモ（任意）
         </label>
         <textarea
           value={body} onChange={e => setBody(e.target.value)} rows={4}
           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 resize-none"
-          placeholder="この場所の思い出を書いてみよう..."
+          placeholder="今日の出来事、感想、メモ..."
         />
       </div>
 
-      {/* Tags */}
+      {/* Photos — optional */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-          <Tag size={11} /> タグ
-        </label>
-        <div className="flex gap-2 mb-2">
-          <input
-            value={tagInput} onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-            placeholder="グルメ、旅行..."
-          />
-          <button type="button" onClick={addTag}
-            className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-500 flex items-center justify-center">
-            <Plus size={18} />
-          </button>
-        </div>
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 bg-purple-50 text-purple-500 text-xs px-3 py-1.5 rounded-full">
-                #{tag}
-                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))}
-                  className="text-purple-300 hover:text-purple-500"><X size={11} /></button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Photos */}
-      <div>
-        <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
-          <Image size={11} /> 写真
+          <Image size={11} /> 写真（任意）
         </label>
         <button
           type="button"
@@ -174,8 +197,11 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
             {photos.map((p, i) => (
               <div key={i} className="relative">
                 <img src={p} className="w-20 h-20 object-cover rounded-xl" />
-                <button type="button" onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow">
+                <button
+                  type="button"
+                  onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow"
+                >
                   <X size={10} />
                 </button>
               </div>
@@ -187,7 +213,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
       <p className="text-xs text-gray-300 text-center">{lat.toFixed(5)}, {lng.toFixed(5)}</p>
 
       <button type="submit"
-        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold text-base shadow-md shadow-pink-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
+        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold shadow-md shadow-pink-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
         <Save size={18} /> 保存する
       </button>
     </form>
