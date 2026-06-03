@@ -175,7 +175,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
       {/* Display */}
       <SectionHeader icon={Palette} title="表示設定" />
       <Card>
-        <Row icon={LayoutGrid} label="記録の表示形式"
+        <Row icon={LayoutGrid} label="表示形式"
           right={<SegmentControl<ListStyle>
             options={[
               { value: 'card',    label: 'カード',    icon: LayoutGrid },
@@ -183,7 +183,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
             ]}
             value={settings.listStyle} onChange={v => update({ listStyle: v })} />}
         />
-        <Row icon={Clock} label="並び順のデフォルト"
+        <Row icon={Clock} label="並び順"
           right={<SegmentControl
             options={[
               { value: 'newest', label: '新しい順', icon: Clock },

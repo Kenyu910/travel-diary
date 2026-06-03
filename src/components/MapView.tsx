@@ -41,21 +41,28 @@ function MapRefSetter({ mapRef }: { mapRef: React.MutableRefObject<ReturnType<ty
 
 function CurrentLocationDot({ lat, lng }: { lat: number; lng: number }) {
   return (
-    <AdvancedMarker position={{ lat, lng }}>
-      {/* Blue pulsing dot — distinct from diary pins */}
-      <div style={{ position: 'relative', width: 20, height: 20 }}>
-        {/* Pulse ring */}
+    <AdvancedMarker position={{ lat, lng }} zIndex={999}>
+      {/* Blue pulsing circle — clearly distinct from pink diary teardrops */}
+      <div style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Outer pulse ring */}
         <div style={{
-          position: 'absolute', inset: -6, borderRadius: '50%',
-          background: 'rgba(66,133,244,0.25)',
-          animation: 'pulse 2s ease-out infinite',
+          position: 'absolute', width: 40, height: 40,
+          borderRadius: '50%', background: 'rgba(66,133,244,0.2)',
+          animation: 'locPulse 1.8s ease-out infinite',
+        }} />
+        {/* Middle ring */}
+        <div style={{
+          position: 'absolute', width: 28, height: 28,
+          borderRadius: '50%', background: 'rgba(66,133,244,0.15)',
+          border: '1px solid rgba(66,133,244,0.4)',
         }} />
         {/* Blue dot */}
         <div style={{
-          width: 20, height: 20, borderRadius: '50%',
+          width: 16, height: 16, borderRadius: '50%',
           background: '#4285F4',
-          border: '3px solid white',
-          boxShadow: '0 2px 6px rgba(66,133,244,0.5)',
+          border: '2.5px solid white',
+          boxShadow: '0 1px 4px rgba(66,133,244,0.6)',
+          position: 'relative', zIndex: 1,
         }} />
       </div>
     </AdvancedMarker>
@@ -295,7 +302,11 @@ export function MapView({
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.7 } 100% { transform: scale(2.5); opacity: 0 } }
+        @keyframes locPulse {
+          0%   { transform: scale(0.8); opacity: 0.8 }
+          70%  { transform: scale(1.6); opacity: 0.2 }
+          100% { transform: scale(1.8); opacity: 0 }
+        }
       `}</style>
     </Map>
   )

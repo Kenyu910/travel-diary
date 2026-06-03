@@ -68,10 +68,10 @@ function AppContent() {
   }, [])
 
   const handleTabChange = (t: Tab) => {
+    // Bug fix: always close any open sheet when switching tabs
+    setSheet(null)
+    setSelectedEntry(null)
     setTab(t)
-    if (t === 'map') {
-      // Closing non-map tab → back to map
-    }
   }
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
@@ -170,6 +170,7 @@ function AppContent() {
     setEntries([])
     setSelectedEntry(null)
     setSheet(null)
+    setTab('map')
   }
 
   return (
@@ -243,27 +244,44 @@ function AppContent() {
         )}
       </div>
 
-      {/* Non-map tab content — full screen (not bottom sheet) */}
+      {/* Non-map tab content — full screen */}
       {tab !== 'map' && (
-        <div className="flex-1 overflow-y-auto bg-[#fdf6fb]" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-          {tab === 'list' && (
-            <DiaryList entries={entries} filterTag={filterTag}
-              onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
-              onExport={handleExport} settings={settings} />
-          )}
-          {tab === 'calendar' && (
-            <CalendarView entries={entries} onSelectEntry={handleSelectEntry} />
-          )}
-          {tab === 'tags' && (
-            <TagsView entries={entries} filterTag={filterTag}
-              onFilterTag={tag => { setFilterTag(tag); setTab('map') }}
-              onSelectEntry={handleSelectEntry} />
-          )}
-          {tab === 'settings' && (
-            <SettingsView settings={settings} update={updateSettings}
-              entries={entries} onImport={handleImport}
-              onExport={handleExport} onClearAll={handleClearAll} />
-          )}
+        <div className="flex-1 flex flex-col overflow-hidden bg-[#fdf6fb]">
+          {/* Unified safe-area header for all non-map tabs */}
+          <div
+            className="flex-shrink-0 bg-white border-b border-gray-100 px-4 pb-3 flex items-end"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+          >
+            <h1 className="text-lg font-bold text-gray-800">
+              {tab === 'list' && '日記'}
+              {tab === 'calendar' && '日程'}
+              {tab === 'tags' && 'タグ'}
+              {tab === 'settings' && '設定'}
+            </h1>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {tab === 'list' && (
+              <DiaryList entries={entries} filterTag={filterTag}
+                onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
+                onExport={handleExport} settings={settings} />
+            )}
+            {tab === 'calendar' && (
+              <CalendarView entries={entries} onSelectEntry={entry => {
+                handleSelectEntry(entry)
+              }} />
+            )}
+            {tab === 'tags' && (
+              <TagsView entries={entries} filterTag={filterTag}
+                onFilterTag={tag => { setFilterTag(tag); setTab('map') }}
+                onSelectEntry={handleSelectEntry} />
+            )}
+            {tab === 'settings' && (
+              <SettingsView settings={settings} update={updateSettings}
+                entries={entries} onImport={handleImport}
+                onExport={handleExport} onClearAll={handleClearAll} />
+            )}
+          </div>
         </div>
       )}
 

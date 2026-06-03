@@ -38,7 +38,6 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
       {/* Header */}
       <div className="px-4 pt-3 pb-3 border-b border-gray-50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold text-gray-700">思い出の記録</h2>
           <div className="flex items-center gap-2">
             <div className="flex bg-gray-100 rounded-xl overflow-hidden">
               <button onClick={() => setListStyle('card')}
