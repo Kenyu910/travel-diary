@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { Search, X, PlusCircle, Navigation2 } from 'lucide-react'
-import type { Map as LeafletMap } from 'leaflet'
+import { APIProvider } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
 import { BottomSheet } from './components/BottomSheet'
@@ -39,7 +39,7 @@ export default function App() {
   const [mapSearch, setMapSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
-  const mapRef = useRef<LeafletMap | null>(null)
+  const mapRef = useRef<ReturnType<typeof import('@vis.gl/react-google-maps').useMap> | null>(null)
 
   // Use ref to read latest sheet value in useCallback without re-creating it
   const sheetRef = useRef<SheetContent>(null)
@@ -84,7 +84,7 @@ export default function App() {
 
   const handleLocate = () => {
     navigator.geolocation.getCurrentPosition(
-      pos => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15, { animate: true }),
+      pos => mapRef.current?.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => alert('位置情報を取得できませんでした。')
     )
   }
@@ -145,7 +145,10 @@ export default function App() {
   const hasMapFilter = !!filterTag || !!mapSearch
   const sheetTitle = sheet ? (SHEET_TITLES[sheet] ?? '') : ''
 
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string
+
   return (
+    <APIProvider apiKey={apiKey}>
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
       <div className="flex-1 relative overflow-hidden">
         <MapErrorBoundary>
@@ -272,5 +275,6 @@ export default function App() {
         )}
       </BottomSheet>
     </div>
+    </APIProvider>
   )
 }

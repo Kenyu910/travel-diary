@@ -1,7 +1,7 @@
 {
   "name": "travel-diary",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/leaflet": "^1.9.21",
     "@types/uuid": "^10.0.0",
+    "@vis.gl/react-google-maps": "^1.8.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",

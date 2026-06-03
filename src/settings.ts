@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export type MapStyle = 'standard' | 'watercolor' | 'toner'
+export type MapStyle = 'roadmap' | 'satellite' | 'terrain'
 export type ListStyle = 'card' | 'compact'
 export type SortOrder = 'newest' | 'oldest'
 
@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultLat: 35.6762,
   defaultLng: 139.6503,
   defaultZoom: 10,
-  mapStyle: 'standard',
+  mapStyle: 'roadmap',
   listStyle: 'card',
   defaultSort: 'newest',
   showHint: true,
@@ -54,25 +54,24 @@ export function useSettings() {
   return { settings, update }
 }
 
-export const MAP_TILES: Record<MapStyle, { url: string; attribution: string; label: string }> = {
-  standard: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    label: '標準',
-  },
-  watercolor: {
-    url: 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
-    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>',
-    label: '水彩画',
-  },
-  toner: {
-    url: 'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>',
-    label: 'モノクロ',
-  },
+export const MAP_STYLES: Record<MapStyle, { label: string; mapTypeId: string }> = {
+  roadmap:   { label: '標準',     mapTypeId: 'roadmap'   },
+  satellite: { label: '衛星写真', mapTypeId: 'satellite' },
+  terrain:   { label: '地形',     mapTypeId: 'terrain'   },
 }
 
 export const CHANGELOG = [
+  {
+    version: '1.5.0',
+    date: '2026-06-04',
+    title: 'Google Maps に移行',
+    changes: [
+      '🗺️ OpenStreetMap → Google Maps に変更',
+      '🛰️ マップスタイル: 標準・衛星写真・地形',
+      '📍 Google Maps マーカー（ピンクカラー）',
+      '⚡ マップ操作がよりスムーズに',
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-06-04',

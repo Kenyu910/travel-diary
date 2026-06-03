@@ -5,7 +5,7 @@ import {
   Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
-import { MAP_TILES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
+import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
 import type { Entry } from '../types'
 
 type Props = {
@@ -202,8 +202,8 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
       <Card>
         <Row icon={Palette} label="マップスタイル"
           right={<SegmentControl<MapStyle>
-            options={(Object.keys(MAP_TILES) as MapStyle[]).map(k => ({
-              value: k, label: MAP_TILES[k].label,
+            options={(Object.keys(MAP_STYLES) as MapStyle[]).map(k => ({
+              value: k, label: MAP_STYLES[k].label,
             }))}
             value={settings.mapStyle} onChange={v => update({ mapStyle: v })} />}
         />
