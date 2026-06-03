@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
-import { Search, X, PlusCircle } from 'lucide-react'
+import { Search, X, PlusCircle, Navigation2 } from 'lucide-react'
+import type { Map as LeafletMap } from 'leaflet'
 import { MapView } from './components/MapView'
+import { MapErrorBoundary } from './components/MapErrorBoundary'
 import { BottomSheet } from './components/BottomSheet'
 import { BottomNav } from './components/BottomNav'
 import type { Tab } from './components/BottomNav'
@@ -37,6 +39,7 @@ export default function App() {
   const [mapSearch, setMapSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const mapRef = useRef<LeafletMap | null>(null)
 
   // Use ref to read latest sheet value in useCallback without re-creating it
   const sheetRef = useRef<SheetContent>(null)
@@ -76,6 +79,13 @@ export default function App() {
         setSheet('form')
       },
       () => alert('位置情報を取得できませんでした。設定で位置情報を許可してください。')
+    )
+  }
+
+  const handleLocate = () => {
+    navigator.geolocation.getCurrentPosition(
+      pos => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15, { animate: true }),
+      () => alert('位置情報を取得できませんでした。')
     )
   }
 
@@ -138,15 +148,18 @@ export default function App() {
   return (
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
       <div className="flex-1 relative overflow-hidden">
-        <MapView
-          entries={entries}
-          selectedEntryId={selectedEntry?.id ?? null}
-          onSelectEntry={handleSelectEntry}
-          onMapClick={handleMapClick}
-          settings={settings}
-          filterTag={filterTag}
-          searchQuery={mapSearch}
-        />
+        <MapErrorBoundary>
+          <MapView
+            entries={entries}
+            selectedEntryId={selectedEntry?.id ?? null}
+            onSelectEntry={handleSelectEntry}
+            onMapClick={handleMapClick}
+            settings={settings}
+            filterTag={filterTag}
+            searchQuery={mapSearch}
+            mapRef={mapRef}
+          />
+        </MapErrorBoundary>
 
         {/* Title pill */}
         {!searchFocused && (
@@ -191,15 +204,26 @@ export default function App() {
           </div>
         )}
 
-        {/* Bug fix #3: Quick add FAB — different icon (PlusCircle) from geolocate */}
+        {/* FAB buttons */}
         {sheet === null && !searchFocused && (
-          <button
-            onClick={handleQuickAdd}
-            className="absolute bottom-16 right-4 z-10 w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-            title="現在地に記録を追加"
-          >
-            <PlusCircle size={22} className="text-white" />
-          </button>
+          <div className="absolute bottom-14 right-4 z-10 flex flex-col gap-2">
+            {/* Quick add at current location */}
+            <button
+              onClick={handleQuickAdd}
+              className="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+              title="現在地に記録を追加"
+            >
+              <PlusCircle size={22} className="text-white" />
+            </button>
+            {/* Center map on current location */}
+            <button
+              onClick={handleLocate}
+              className="w-12 h-12 bg-white rounded-full shadow-md border border-gray-200 flex items-center justify-center active:scale-95 transition-transform"
+              title="現在地を表示"
+            >
+              <Navigation2 size={20} className="text-pink-400" />
+            </button>
+          </div>
         )}
 
         {settings.showHint && sheet === null && !searchFocused && (
