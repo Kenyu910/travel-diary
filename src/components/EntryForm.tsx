@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark } from 'lucide-react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
@@ -21,22 +21,23 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
   const placesLib = useMapsLibrary('places')
   const win = window as any
 
-  useMemo(() => {
+  useEffect(() => {
     if (!placesLib || !inputRef.current) return
     const G = win.google?.maps
     if (!G) return
+
     const ac = new placesLib.Autocomplete(inputRef.current, {
       fields: ['geometry', 'name', 'formatted_address'],
       componentRestrictions: { country: 'jp' },
     })
-    ac.addListener('place_changed', () => {
+    const listener = ac.addListener('place_changed', () => {
       const place = ac.getPlace()
       const loc = place.geometry?.location
       if (loc) {
         onChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
       }
     })
-    // Set location bias toward current position
+    // Bias toward current position
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         const d = 0.05
@@ -46,7 +47,10 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
         ))
       }, () => {})
     }
-  }, [placesLib])
+    return () => {
+      try { G?.event?.removeListener(listener) } catch { /* ignore */ }
+    }
+  }, [placesLib]) // onChange intentionally omitted (stable ref)
 
   return (
     <div className="relative">
@@ -180,7 +184,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
           onClick={() => setWantToVisit(v => !v)}
           className={`relative w-11 h-6 rounded-full transition-colors ${wantToVisit ? 'bg-purple-400' : 'bg-gray-200'}`}
         >
-          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${wantToVisit ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full ring-1 ring-gray-200/50 transition-transform ${wantToVisit ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </button>
       </div>
 

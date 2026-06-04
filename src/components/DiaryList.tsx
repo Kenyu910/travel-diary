@@ -107,14 +107,20 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
         ) : listStyle === 'card' ? (
           filtered.map(entry => (
             <button key={entry.id} onClick={() => onSelectEntry(entry)}
-              className="text-left bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform">
+              className={`text-left bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.98] transition-transform ${
+                entry.wantToVisit ? 'border-2 border-purple-200' : 'border border-gray-100'
+              }`}>
+              {entry.wantToVisit && (
+                <div className="bg-purple-50 px-3.5 py-1.5 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-purple-500">⭐ 行ってみたい</span>
+                </div>
+              )}
               {entry.photos.length > 0 && <img src={entry.photos[0]} className="w-full h-36 object-cover" />}
               <div className="p-3.5">
-                {/* Store/place name prominently if exists */}
                 {entry.placeName && (
                   <div className="flex items-center gap-1 mb-1">
-                    <MapPin size={11} className="text-pink-400 flex-shrink-0" />
-                    <p className="text-xs font-semibold text-pink-500 truncate">{entry.placeName}</p>
+                    <MapPin size={11} className={`flex-shrink-0 ${entry.wantToVisit ? 'text-purple-400' : 'text-pink-400'}`} />
+                    <p className={`text-xs font-semibold truncate ${entry.wantToVisit ? 'text-purple-500' : 'text-pink-500'}`}>{entry.placeName}</p>
                   </div>
                 )}
                 <p className="font-semibold text-gray-800 text-sm">{entry.title}</p>
@@ -136,12 +142,15 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
               className={`w-full text-left flex items-center gap-3 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-100' : ''}`}>
               {entry.photos.length > 0
                 ? <img src={entry.photos[0]} className="w-11 h-11 object-cover rounded-xl flex-shrink-0" />
-                : <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-                    <MapPin size={16} className="text-pink-400" />
+                : <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${entry.wantToVisit ? 'bg-purple-100' : 'bg-gradient-to-br from-pink-100 to-purple-100'}`}>
+                    <MapPin size={16} className={entry.wantToVisit ? 'text-purple-500' : 'text-pink-400'} />
                   </div>
               }
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
+                  {entry.wantToVisit && <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded-full flex-shrink-0">行きたい</span>}
+                </div>
                 <p className="text-xs text-gray-400 truncate">{entry.date}{entry.placeName && ` · ${entry.placeName}`}</p>
                 {entry.tags.length > 0 && <p className="text-xs text-purple-400 truncate">{entry.tags.map(t => `#${t}`).join(' ')}</p>}
               </div>

@@ -28,7 +28,8 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white mx-4 rounded-2xl overflow-hidden border border-gray-100">
+    <div className="bg-white mx-4 rounded-2xl border border-gray-100">
+      {/* No overflow-hidden — was clipping toggle shadows */}
       {children}
     </div>
   )
@@ -49,7 +50,7 @@ function Row({
   return (
     <div
       onClick={onRowClick}
-      className={`flex items-center gap-3 pl-4 pr-5 py-3.5 border-b border-gray-50 last:border-0 ${
+      className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 ${
         onRowClick ? 'cursor-pointer active:bg-gray-50' : ''
       }`}
     >
@@ -59,9 +60,9 @@ function Row({
         {sub && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{sub}</p>}
       </div>
       {right ? (
-        <div className="flex-shrink-0">{right}</div>
+        <div className="flex-shrink-0 ml-2">{right}</div>
       ) : (
-        onRowClick && <ChevronRight size={15} className="text-gray-300 flex-shrink-0" />
+        onRowClick && <ChevronRight size={15} className="text-gray-300 flex-shrink-0 ml-2" />
       )}
     </div>
   )
@@ -73,7 +74,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       onClick={() => onChange(!value)}
       className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${value ? 'bg-pink-400' : 'bg-gray-200'}`}
     >
-      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full ring-1 ring-gray-200/50 transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </button>
   )
 }
@@ -284,7 +285,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
 
       <div className="text-center mt-6 mb-2">
         <p className="text-xs text-gray-400 font-medium">旅日記</p>
-        <p className="text-xs text-gray-300 mt-0.5">v1.8.0</p>
+        <p className="text-xs text-gray-300 mt-0.5">v1.8.1</p>
         <button
           onClick={() => { if (confirm('設定をリセットしますか？')) update({ ...DEFAULT_SETTINGS }) }}
           className="flex items-center gap-1.5 text-xs text-gray-300 mt-3 mx-auto"

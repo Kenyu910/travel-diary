@@ -276,7 +276,7 @@ function AppContent() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'hidden', scrollbarGutter: 'stable' }}>
             {tab === 'list' && (
               <DiaryList entries={entries} filterTag={filterTag}
                 onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
@@ -316,7 +316,11 @@ function AppContent() {
             onClose={closeSheet}
             calendarSync={settings.calendarSync}
             onCalendarSync={settings.calendarSync ? addToGoogleCalendar : undefined}
-            onFlyTo={(lat, lng) => { setTab('map'); mapRef.current?.panTo({ lat, lng }) }} />
+            onFlyTo={(lat, lng) => {
+              setTab('map')
+              // Delay panTo to let React re-render the map first
+              setTimeout(() => mapRef.current?.panTo({ lat, lng }), 100)
+            }} />
         )}
         {sheet === 'edit' && selectedEntry && (
           <EntryForm lat={selectedEntry.lat} lng={selectedEntry.lng}

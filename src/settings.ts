@@ -64,6 +64,32 @@ export const MAP_STYLES: Record<MapStyle, { label: string; mapTypeId: string }> 
 
 export const CHANGELOG = [
   {
+    version: '1.8.1',
+    date: '2026-06-04',
+    title: 'バグ修正',
+    changes: [
+      '🐛 PlaceNameInput: useMemo→useEffect に修正（副作用の正しい使い方）',
+      '🐛 設定トグルのクリップ問題を修正（shadow→ring）',
+      '⭐ 行ってみたい記録を紫アクセントで視覚的に区別',
+    ],
+  },
+  {
+    version: '1.8.0',
+    date: '2026-06-04',
+    title: '大規模改善・新機能',
+    changes: [
+      '🐛 ピンタップ後キャンセルされるバグ修正',
+      '🐛 日記選択時マップが背景に出る問題修正',
+      '🐛 タグフィルターでマップに飛ばない',
+      '⭐ 行ってみたいモード（紫ピン）',
+      '🏷️ タグ名変更・タグ一覧折り畳み',
+      '📅 Googleカレンダー連携',
+      '🔍 場所名フィールドをGoogle Places検索対応に',
+      '📲 BottomSheetスワイプ閉じ対応',
+      '🗺️ アプリ名削除・ヒント削除・検索バー全幅',
+    ],
+  },
+  {
     version: '1.7.1',
     date: '2026-06-04',
     title: 'バグ修正',
