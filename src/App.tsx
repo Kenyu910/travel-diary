@@ -182,7 +182,6 @@ function AppContent() {
     setTab('map')
   }
 
-
   const sheetTitle = sheet ? SHEET_TITLES[sheet] : ''
 
   // Tab display names

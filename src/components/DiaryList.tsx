@@ -47,7 +47,7 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
       {/* Mode tab switcher */}
       <div className="flex mx-4 mt-3 mb-1 bg-gray-100 rounded-2xl p-1">
         <button
-          onClick={() => setDiaryMode('diary')}
+          onClick={() => { setDiaryMode('diary'); onFilterTag(null) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
             diaryMode === 'diary' ? 'bg-white text-pink-500 shadow-sm' : 'text-gray-500'
           }`}
@@ -57,7 +57,7 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
           {diaryCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'diary' ? 'bg-pink-100 text-pink-500' : 'bg-gray-200 text-gray-500'}`}>{diaryCount}</span>}
         </button>
         <button
-          onClick={() => setDiaryMode('wishlist')}
+          onClick={() => { setDiaryMode('wishlist'); onFilterTag(null) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
             diaryMode === 'wishlist' ? 'bg-white text-purple-500 shadow-sm' : 'text-gray-500'
           }`}

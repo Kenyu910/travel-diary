@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Entry } from './types'
 
 // ── Entries ──────────────────────────────────────────────────
@@ -13,8 +13,11 @@ export function loadEntries(): Entry[] {
 
 export function useEntries() {
   const [entries, setEntries] = useState<Entry[]>(loadEntries)
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
+    // Bug fix: skip initial render to avoid unnecessary write on mount
+    if (isFirstRender.current) { isFirstRender.current = false; return }
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
   }, [entries])
 
@@ -44,8 +47,10 @@ export function loadGlobalTags(): string[] {
 
 export function useGlobalTags() {
   const [tags, setTags] = useState<string[]>(loadGlobalTags)
+  const isFirstTagRender = useRef(true)
 
   useEffect(() => {
+    if (isFirstTagRender.current) { isFirstTagRender.current = false; return }
     localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
   }, [tags])
 

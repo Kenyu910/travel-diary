@@ -16,10 +16,12 @@ export function CalendarView({ entries, onSelectEntry }: Props) {
   const [month, setMonth] = useState(today.getMonth())
 
   const prevMonth = () => {
+    setSelectedDate(null) // Bug fix: reset date selection when changing month
     if (month === 0) { setYear(y => y - 1); setMonth(11) }
     else setMonth(m => m - 1)
   }
   const nextMonth = () => {
+    setSelectedDate(null) // Bug fix: reset date selection when changing month
     if (month === 11) { setYear(y => y + 1); setMonth(0) }
     else setMonth(m => m + 1)
   }
@@ -42,14 +44,13 @@ export function CalendarView({ entries, onSelectEntry }: Props) {
   while (cells.length % 7 !== 0) cells.push(null)
 
   const todayStr = today.toISOString().slice(0, 10)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   // Entries in this month
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
   const monthEntries = entries
     .filter(e => e.date.startsWith(monthPrefix))
     .sort((a, b) => b.date.localeCompare(a.date))
-
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const selectedEntries = selectedDate ? (entryMap.get(selectedDate) ?? []) : monthEntries
 
   return (

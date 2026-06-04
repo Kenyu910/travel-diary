@@ -42,22 +42,26 @@ export function PlacesSearch({ onPlaceSelected }: Props) {
     }
 
     // Bias toward current location (within ~5km radius)
+    // Bug fix: useEffect cleanup must be returned synchronously
+    let cleanup = () => {}
     if (navigator.geolocation && G) {
+      cleanup = createAutoComplete() // start without bias immediately
       navigator.geolocation.getCurrentPosition(
         pos => {
           const { latitude: lat, longitude: lng } = pos.coords
-          const d = 0.05 // ~5km
+          const d = 0.05
           const bounds = new G.LatLngBounds(
             new G.LatLng(lat - d, lng - d),
             new G.LatLng(lat + d, lng + d)
           )
-          return createAutoComplete(bounds)
+          cleanup = createAutoComplete(bounds)
         },
-        () => createAutoComplete()
+        () => {}
       )
     } else {
-      return createAutoComplete()
+      cleanup = createAutoComplete()
     }
+    return () => cleanup()
   }, [placesLib, onPlaceSelected])
 
   const handleClear = useCallback(() => {

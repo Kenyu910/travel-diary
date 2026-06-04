@@ -90,6 +90,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     }
     if (!placesService || !map) return
     setFoodMode(type); setLoadingFood(true)
+    setFoodPlaces([])  // Bug fix: clear previous results before new search
+    setSelectedFood(null)
     setShowDiaryPins(false)   // hide diary pins when food mode on
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }

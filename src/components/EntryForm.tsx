@@ -135,7 +135,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
 
       {/* Title */}
       <div>
-        <label className="text-xs font-semibold text-gray-400 mb-1.5 block">タイトル *</label>
+        <label className="text-xs font-semibold text-gray-400 mb-1.5 block">タイトル（省略可）</label>
         <input
           value={title} onChange={e => setTitle(e.target.value)}
           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
@@ -320,7 +320,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         )}
       </div>
 
-      <p className="text-xs text-gray-300 text-center">{lat.toFixed(5)}, {lng.toFixed(5)}</p>
+      <p className="text-xs text-gray-300 text-center">{formLat.toFixed(5)}, {formLng.toFixed(5)}</p>
 
       <button type="submit"
         className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold shadow-md shadow-pink-100 active:scale-95 transition-transform flex items-center justify-center gap-2">

@@ -22,6 +22,7 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
 
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = 0
+    if (!open) setDragY(0) // Bug fix: reset drag position when sheet closes
   }, [open])
 
   const handleHandleTouchStart = (e: React.TouchEvent) => {
