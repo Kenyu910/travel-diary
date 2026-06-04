@@ -283,7 +283,8 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
       </Card>
 
       <div className="text-center mt-6 mb-2">
-        <p className="text-xs text-gray-300">旅日記 v1.4.0</p>
+        <p className="text-xs text-gray-400 font-medium">旅日記</p>
+        <p className="text-xs text-gray-300 mt-0.5">v1.8.0</p>
         <button
           onClick={() => { if (confirm('設定をリセットしますか？')) update({ ...DEFAULT_SETTINGS }) }}
           className="flex items-center gap-1.5 text-xs text-gray-300 mt-3 mx-auto"

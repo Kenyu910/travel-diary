@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { PlusCircle, Navigation2 } from 'lucide-react'
+import { PlusCircle, Navigation2, Plus } from 'lucide-react'
 import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
@@ -17,13 +17,10 @@ import { useEntries } from './store'
 import { useSettings } from './settings'
 import type { Entry } from './types'
 
-// Sheet is ONLY used for map interactions (form/detail/edit)
 type Sheet = 'form' | 'detail' | 'edit' | null
 
 const SHEET_TITLES: Record<NonNullable<Sheet>, string> = {
-  form:  '新しい記録',
-  edit:  '記録を編集',
-  detail: '',
+  form: '新しい記録', edit: '記録を編集', detail: '',
 }
 
 function AppContent() {
@@ -43,10 +40,7 @@ function AppContent() {
   sheetRef.current = sheet
 
   const geocodingLib = useMapsLibrary('geocoding')
-  const geocoder = useMemo(
-    () => geocodingLib ? new geocodingLib.Geocoder() : null,
-    [geocodingLib]
-  )
+  const geocoder = useMemo(() => geocodingLib ? new geocodingLib.Geocoder() : null, [geocodingLib])
 
   const reverseGeocode = useCallback((lat: number, lng: number, cb: (name: string) => void) => {
     if (!geocoder) return
@@ -68,13 +62,14 @@ function AppContent() {
   }, [])
 
   const handleTabChange = (t: Tab) => {
-    // Bug fix: always close any open sheet when switching tabs
     setSheet(null)
     setSelectedEntry(null)
     setTab(t)
   }
 
+  // Bug fix: don't open form if sheet already open (prevents pin-tap cancel)
   const handleMapClick = useCallback((lat: number, lng: number) => {
+    if (sheetRef.current !== null) return
     setSearchPin(null)
     setClickedPos({ lat, lng })
     setClickedPlaceName('')
@@ -83,14 +78,12 @@ function AppContent() {
     reverseGeocode(lat, lng, name => setClickedPlaceName(name))
   }, [reverseGeocode])
 
-  // Search result → show pin on map, let user tap to confirm
   const handlePlaceSelected = useCallback((lat: number, lng: number, name: string) => {
     setSearchPin({ lat, lng, name })
     mapRef.current?.panTo({ lat, lng })
     mapRef.current?.setZoom(16)
   }, [])
 
-  // User taps the search pin → open form
   const handleSearchPinClick = useCallback(() => {
     if (!searchPin) return
     setClickedPos({ lat: searchPin.lat, lng: searchPin.lng })
@@ -128,10 +121,29 @@ function AppContent() {
     )
   }
 
+  // Bug fix: don't change tab — keep current tab as background (no map behind diary)
   const handleSelectEntry = (entry: Entry) => {
     setSelectedEntry(entry)
-    setTab('map')
     setSheet('detail')
+  }
+
+  const openNewEntry = (_date?: string) => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setClickedPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setClickedPlaceName('')
+        setSelectedEntry(null)
+        setSheet('form')
+        reverseGeocode(pos.coords.latitude, pos.coords.longitude, name => setClickedPlaceName(name))
+      },
+      () => {
+        // Fallback to default location
+        setClickedPos({ lat: settings.defaultLat, lng: settings.defaultLng })
+        setClickedPlaceName('')
+        setSelectedEntry(null)
+        setSheet('form')
+      }
+    )
   }
 
   const handleSave = (entry: Entry) => {
@@ -173,9 +185,26 @@ function AppContent() {
     setTab('map')
   }
 
+  // Google Calendar sync
+  const addToGoogleCalendar = useCallback((entry: Entry) => {
+    const start = entry.date.replace(/-/g, '')
+    const title = encodeURIComponent(entry.title)
+    const loc = encodeURIComponent(entry.placeName || `${entry.lat},${entry.lng}`)
+    const details = encodeURIComponent(entry.body || '')
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${start}&location=${loc}&details=${details}`
+    window.open(url, '_blank')
+  }, [])
+
+  const sheetTitle = sheet ? SHEET_TITLES[sheet] : ''
+
+  // Tab display names
+  const TAB_TITLES: Partial<Record<Tab, string>> = {
+    list: '日記', calendar: '日程', tags: 'タグ', settings: '設定',
+  }
+
   return (
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
-      {/* Map layer (always mounted, hidden when other tab active) */}
+      {/* Map layer — always mounted, invisible when non-map tab */}
       <div className={`absolute inset-0 bottom-[calc(env(safe-area-inset-bottom,0px)+56px)] ${tab !== 'map' ? 'invisible' : ''}`}>
         <MapErrorBoundary>
           <MapView
@@ -191,31 +220,24 @@ function AppContent() {
             searchPin={searchPin}
             onSearchPinClick={handleSearchPinClick}
             onClearSearchPin={() => setSearchPin(null)}
+            sheetOpen={sheet !== null}
           />
         </MapErrorBoundary>
 
-        {/* Map overlays — only on map tab */}
+        {/* Map overlays — only when map tab & no sheet */}
         {tab === 'map' && sheet === null && (
           <>
-            {/* Title + search */}
+            {/* Search bar only — no title pill */}
             <div
-              className="absolute left-0 right-0 z-10 px-4 flex flex-col gap-2"
-              style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+              className="absolute z-10"
+              style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)', left: 16, right: 16 }}
             >
-              <div className="flex justify-center pointer-events-none">
-                <div className="bg-white/85 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100/50">
-                  <span className="text-sm font-bold text-pink-500">旅日記</span>
-                </div>
-              </div>
-              <div className="pl-14">
-                <PlacesSearch onPlaceSelected={handlePlaceSelected} />
-              </div>
+              <PlacesSearch onPlaceSelected={handlePlaceSelected} />
             </div>
 
-            {/* Search pin hint */}
             {searchPin && (
-              <div className="absolute top-28 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                <div className="bg-purple-500 text-white px-4 py-2 rounded-full text-xs shadow-lg">
+              <div className="absolute z-10 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 56px)', left: '50%', transform: 'translateX(-50%)' }}>
+                <div className="bg-purple-500 text-white px-4 py-2 rounded-full text-xs shadow-lg whitespace-nowrap">
                   紫のピンをタップして記録を追加
                 </div>
               </div>
@@ -232,14 +254,6 @@ function AppContent() {
                 <Navigation2 size={20} className="text-pink-400" />
               </button>
             </div>
-
-            {settings.showHint && !searchPin && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm text-xs text-gray-400 border border-gray-100/50">
-                  タップして記録を追加
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -247,17 +261,19 @@ function AppContent() {
       {/* Non-map tab content — full screen */}
       {tab !== 'map' && (
         <div className="flex-1 flex flex-col overflow-hidden bg-[#fdf6fb]">
-          {/* Unified safe-area header for all non-map tabs */}
+          {/* Unified header */}
           <div
-            className="flex-shrink-0 bg-white border-b border-gray-100 px-4 pb-3 flex items-end"
+            className="flex-shrink-0 bg-white border-b border-gray-100 px-4 pb-3 flex items-end justify-between"
             style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
           >
-            <h1 className="text-lg font-bold text-gray-800">
-              {tab === 'list' && '日記'}
-              {tab === 'calendar' && '日程'}
-              {tab === 'tags' && 'タグ'}
-              {tab === 'settings' && '設定'}
-            </h1>
+            <h1 className="text-lg font-bold text-gray-800">{TAB_TITLES[tab]}</h1>
+            {/* + button for calendar tab */}
+            {tab === 'calendar' && (
+              <button onClick={() => openNewEntry()}
+                className="w-8 h-8 rounded-full bg-pink-400 flex items-center justify-center shadow-sm">
+                <Plus size={18} className="text-white" />
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -267,13 +283,11 @@ function AppContent() {
                 onExport={handleExport} settings={settings} />
             )}
             {tab === 'calendar' && (
-              <CalendarView entries={entries} onSelectEntry={entry => {
-                handleSelectEntry(entry)
-              }} />
+              <CalendarView entries={entries} onSelectEntry={handleSelectEntry} />
             )}
             {tab === 'tags' && (
               <TagsView entries={entries} filterTag={filterTag}
-                onFilterTag={tag => { setFilterTag(tag); setTab('map') }}
+                onFilterTag={setFilterTag}  // stays on tags tab
                 onSelectEntry={handleSelectEntry} />
             )}
             {tab === 'settings' && (
@@ -285,14 +299,11 @@ function AppContent() {
         </div>
       )}
 
-      {/* Spacer for nav when on map */}
       {tab === 'map' && <div className="flex-1" />}
 
-      {/* Bottom nav */}
       <BottomNav active={tab} onChange={handleTabChange} entryCount={entries.length} />
 
-      {/* BottomSheet — only for map interactions */}
-      <BottomSheet open={sheet !== null} onClose={closeSheet} title={sheet ? SHEET_TITLES[sheet] : ''}>
+      <BottomSheet open={sheet !== null} onClose={closeSheet} title={sheetTitle}>
         {sheet === 'form' && clickedPos && (
           <EntryForm lat={clickedPos.lat} lng={clickedPos.lng}
             defaultPlaceName={clickedPlaceName}
@@ -304,7 +315,8 @@ function AppContent() {
             onDelete={handleDelete}
             onClose={closeSheet}
             calendarSync={settings.calendarSync}
-            onFlyTo={(lat, lng) => mapRef.current?.panTo({ lat, lng })} />
+            onCalendarSync={settings.calendarSync ? addToGoogleCalendar : undefined}
+            onFlyTo={(lat, lng) => { setTab('map'); mapRef.current?.panTo({ lat, lng }) }} />
         )}
         {sheet === 'edit' && selectedEntry && (
           <EntryForm lat={selectedEntry.lat} lng={selectedEntry.lng}

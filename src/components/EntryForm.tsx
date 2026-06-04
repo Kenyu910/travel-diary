@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X } from 'lucide-react'
+import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark } from 'lucide-react'
+import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
 import { useGlobalTags } from '../store'
@@ -15,11 +16,61 @@ type Props = {
   defaultPlaceName?: string
 }
 
+function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: string, lat?: number, lng?: number) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const placesLib = useMapsLibrary('places')
+  const win = window as any
+
+  useMemo(() => {
+    if (!placesLib || !inputRef.current) return
+    const G = win.google?.maps
+    if (!G) return
+    const ac = new placesLib.Autocomplete(inputRef.current, {
+      fields: ['geometry', 'name', 'formatted_address'],
+      componentRestrictions: { country: 'jp' },
+    })
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace()
+      const loc = place.geometry?.location
+      if (loc) {
+        onChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
+      }
+    })
+    // Set location bias toward current position
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const d = 0.05
+        ac.setBounds(new G.LatLngBounds(
+          new G.LatLng(pos.coords.latitude - d, pos.coords.longitude - d),
+          new G.LatLng(pos.coords.latitude + d, pos.coords.longitude + d)
+        ))
+      }, () => {})
+    }
+  }, [placesLib])
+
+  return (
+    <div className="relative">
+      <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-8 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        placeholder="場所を検索または入力..."
+        autoComplete="off"
+      />
+    </div>
+  )
+}
+
 export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlaceName }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
+  const [wantToVisit, setWantToVisit] = useState(initial?.wantToVisit ?? false)
+  const [formLat, setFormLat] = useState(lat)
+  const [formLng, setFormLng] = useState(lng)
   const [selectedTags, setSelectedTags] = useState<string[]>(initial?.tags ?? [])
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
@@ -66,8 +117,8 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
     if (!title.trim()) return
     onSave({
       id: initial?.id ?? uuidv4(),
-      title: title.trim(), body, date, lat, lng,
-      placeName, tags: selectedTags, photos, rating,
+      title: title.trim(), body, date, lat: formLat, lng: formLng,
+      placeName, tags: selectedTags, photos, rating, wantToVisit,
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })
   }
@@ -97,7 +148,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         />
       </div>
 
-      {/* Place */}
+      {/* Place — searchable */}
       <div>
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
           <MapPin size={11} /> 場所名
@@ -105,11 +156,32 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
             <span className="text-[10px] text-pink-400 ml-1">📍 自動入力</span>
           )}
         </label>
-        <input
-          value={placeName} onChange={e => setPlaceName(e.target.value)}
-          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
-          placeholder="例: 渋谷駅前"
+        <PlaceNameInput
+          value={placeName}
+          onChange={(v, newLat, newLng) => {
+            setPlaceName(v)
+            if (newLat !== undefined) setFormLat(newLat)
+            if (newLng !== undefined) setFormLng(newLng)
+          }}
         />
+      </div>
+
+      {/* Want to visit toggle */}
+      <div className="flex items-center justify-between bg-purple-50 rounded-2xl px-4 py-3 border border-purple-100">
+        <div className="flex items-center gap-2">
+          <Bookmark size={16} className={wantToVisit ? 'text-purple-500' : 'text-gray-400'} />
+          <div>
+            <p className="text-sm font-medium text-gray-700">行ってみたい</p>
+            <p className="text-xs text-gray-400">紫ピンでマップに表示</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWantToVisit(v => !v)}
+          className={`relative w-11 h-6 rounded-full transition-colors ${wantToVisit ? 'bg-purple-400' : 'bg-gray-200'}`}
+        >
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${wantToVisit ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
       </div>
 
       {/* Tags — collapsible dropdown */}
