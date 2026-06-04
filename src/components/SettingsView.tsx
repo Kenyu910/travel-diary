@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import {
   User, Palette, Map, Database, Info, Edit3, LayoutGrid, List,
   Clock, CalendarDays, Lightbulb, Download, Upload, HardDrive,
-  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image, CalendarPlus
+  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
 import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
@@ -72,9 +72,19 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   return (
     <button
       onClick={() => onChange(!value)}
-      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${value ? 'bg-pink-400' : 'bg-gray-200'}`}
+      style={{
+        position: 'relative', width: 44, height: 26, borderRadius: 13,
+        background: value ? '#f472b6' : '#d1d5db',
+        border: 'none', cursor: 'pointer', flexShrink: 0,
+        transition: 'background 0.2s', outline: 'none',
+      }}
     >
-      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full ring-1 ring-gray-200/50 transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      <span style={{
+        position: 'absolute', top: 3, width: 20, height: 20, borderRadius: '50%',
+        background: 'white', left: value ? 21 : 3,
+        transition: 'left 0.2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+      }} />
     </button>
   )
 }
@@ -195,9 +205,6 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         />
         <Row icon={Lightbulb} label="ヒントを表示" sub="マップ上の案内メッセージ"
           right={<Toggle value={settings.showHint} onChange={v => update({ showHint: v })} />}
-        />
-        <Row icon={CalendarPlus} label="iPhoneカレンダー連携" sub="日記の詳細からカレンダーに追加"
-          right={<Toggle value={settings.calendarSync ?? false} onChange={v => update({ calendarSync: v })} />}
         />
       </Card>
 

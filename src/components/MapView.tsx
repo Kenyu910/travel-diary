@@ -145,6 +145,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         const lng = e.detail.latLng?.lng
         const placeId = e.detail.placeId
         if (placeId && placesService) {
+          // Prevent native Google Maps info window from showing
+          e.stop()
           setSelectedFood(null); onClearSearchPin()
           placesService.getDetails({ placeId, fields: ['name', 'geometry', 'formatted_address', 'rating'] }, (place: any, status: any) => {
             if (status === 'OK' && place) {

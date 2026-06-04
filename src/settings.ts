@@ -13,7 +13,6 @@ export type AppSettings = {
   listStyle: ListStyle
   defaultSort: SortOrder
   showHint: boolean
-  calendarSync: boolean   // iPhoneカレンダー連携
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,7 +24,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   listStyle: 'card',
   defaultSort: 'newest',
   showHint: true,
-  calendarSync: false,
 }
 
 const KEY = 'travel-diary-settings'

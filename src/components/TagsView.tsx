@@ -14,7 +14,7 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
   const { tags: globalTags, addTag, removeTag, setTags } = useGlobalTags()
   const [newTagInput, setNewTagInput] = useState('')
   const [showAddInput, setShowAddInput] = useState(false)
-  const [showTagList, setShowTagList] = useState(true)
+  const [showTagList, setShowTagList] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [editingTag, setEditingTag] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')

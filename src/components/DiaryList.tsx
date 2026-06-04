@@ -16,10 +16,16 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState(settings.defaultSort)
   const [listStyle, setListStyle] = useState(settings.listStyle)
+  const [diaryMode, setDiaryMode] = useState<'diary' | 'wishlist'>('diary')
 
-  const allTags = Array.from(new Set(entries.flatMap(e => e.tags))).sort()
+  // Split entries by mode
+  const modeEntries = diaryMode === 'diary'
+    ? entries.filter(e => !e.wantToVisit)
+    : entries.filter(e => e.wantToVisit)
 
-  const filtered = entries
+  const allTags = Array.from(new Set(modeEntries.flatMap(e => e.tags))).sort()
+
+  const filtered = modeEntries
     .filter(e => !filterTag || e.tags.includes(filterTag))
     .filter(e => {
       if (!search.trim()) return true
@@ -33,10 +39,37 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
     })
     .sort((a, b) => sort === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
 
+  const diaryCount = entries.filter(e => !e.wantToVisit).length
+  const wishlistCount = entries.filter(e => e.wantToVisit).length
+
   return (
     <div className="flex flex-col pb-4">
+      {/* Mode tab switcher */}
+      <div className="flex mx-4 mt-3 mb-1 bg-gray-100 rounded-2xl p-1">
+        <button
+          onClick={() => setDiaryMode('diary')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+            diaryMode === 'diary' ? 'bg-white text-pink-500 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <span>📖</span>
+          <span>日記</span>
+          {diaryCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'diary' ? 'bg-pink-100 text-pink-500' : 'bg-gray-200 text-gray-500'}`}>{diaryCount}</span>}
+        </button>
+        <button
+          onClick={() => setDiaryMode('wishlist')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+            diaryMode === 'wishlist' ? 'bg-white text-purple-500 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <span>⭐</span>
+          <span>行きたい</span>
+          {wishlistCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'wishlist' ? 'bg-purple-100 text-purple-500' : 'bg-gray-200 text-gray-500'}`}>{wishlistCount}</span>}
+        </button>
+      </div>
+
       {/* Header */}
-      <div className="px-4 pt-3 pb-3 border-b border-gray-50">
+      <div className="px-4 pt-2 pb-3 border-b border-gray-50">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="flex bg-gray-100 rounded-xl overflow-hidden">
@@ -102,7 +135,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-300">
             <MapPin size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{search || filterTag ? '該当する記録がありません' : 'マップをタップして最初の記録を追加！'}</p>
+            <p className="text-sm">{
+              search || filterTag ? '該当する記録がありません'
+              : diaryMode === 'wishlist' ? '行ってみたい場所を追加しよう！'
+              : 'マップをタップして最初の記録を追加！'
+            }</p>
           </div>
         ) : listStyle === 'card' ? (
           filtered.map(entry => (

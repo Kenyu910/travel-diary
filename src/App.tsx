@@ -128,21 +128,18 @@ function AppContent() {
   }
 
   const openNewEntry = (_date?: string) => {
+    // Open form immediately with default location, then update with GPS
+    setClickedPos({ lat: settings.defaultLat, lng: settings.defaultLng })
+    setClickedPlaceName('')
+    setSelectedEntry(null)
+    setSheet('form')
+    // Try to get precise location in background
     navigator.geolocation.getCurrentPosition(
       pos => {
         setClickedPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setClickedPlaceName('')
-        setSelectedEntry(null)
-        setSheet('form')
         reverseGeocode(pos.coords.latitude, pos.coords.longitude, name => setClickedPlaceName(name))
       },
-      () => {
-        // Fallback to default location
-        setClickedPos({ lat: settings.defaultLat, lng: settings.defaultLng })
-        setClickedPlaceName('')
-        setSelectedEntry(null)
-        setSheet('form')
-      }
+      () => {} // ignore error - already opened with default
     )
   }
 
@@ -185,15 +182,6 @@ function AppContent() {
     setTab('map')
   }
 
-  // Google Calendar sync
-  const addToGoogleCalendar = useCallback((entry: Entry) => {
-    const start = entry.date.replace(/-/g, '')
-    const title = encodeURIComponent(entry.title)
-    const loc = encodeURIComponent(entry.placeName || `${entry.lat},${entry.lng}`)
-    const details = encodeURIComponent(entry.body || '')
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${start}&location=${loc}&details=${details}`
-    window.open(url, '_blank')
-  }, [])
 
   const sheetTitle = sheet ? SHEET_TITLES[sheet] : ''
 
@@ -314,11 +302,8 @@ function AppContent() {
             onEdit={() => setSheet('edit')}
             onDelete={handleDelete}
             onClose={closeSheet}
-            calendarSync={settings.calendarSync}
-            onCalendarSync={settings.calendarSync ? addToGoogleCalendar : undefined}
             onFlyTo={(lat, lng) => {
               setTab('map')
-              // Delay panTo to let React re-render the map first
               setTimeout(() => mapRef.current?.panTo({ lat, lng }), 100)
             }} />
         )}
