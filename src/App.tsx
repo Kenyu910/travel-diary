@@ -293,9 +293,14 @@ function AppContent() {
               <CalendarView entries={entries} onSelectEntry={handleSelectEntry} />
             )}
             {tab === 'tags' && (
-              <TagsView entries={entries} filterTag={filterTag}
+              <TagsView
+                entries={entries}
+                filterTag={filterTag}
                 onFilterTag={setFilterTag}
-                onSelectEntry={handleSelectEntry} />
+                onSelectEntry={handleSelectEntry}
+                tagColors={settings.tagColors}
+                onUpdateTagColors={colors => updateSettings({ tagColors: colors })}
+              />
             )}
             {tab === 'settings' && (
               <SettingsView settings={settings} update={updateSettings}

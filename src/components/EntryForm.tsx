@@ -76,6 +76,15 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const [wantToVisit, setWantToVisit] = useState(initial?.wantToVisit ?? false)
   const [formLat, setFormLat] = useState(lat)
   const [formLng, setFormLng] = useState(lng)
+
+  // Bug fix: sync defaultPlaceName when GPS resolves after form opens (new entry only)
+  // Also sync lat/lng from parent when position updates in background
+  useEffect(() => {
+    if (!initial && defaultPlaceName) setPlaceName(defaultPlaceName)
+  }, [defaultPlaceName, initial])
+  useEffect(() => {
+    if (!initial) { setFormLat(lat); setFormLng(lng) }
+  }, [lat, lng, initial])
   const [selectedTags, setSelectedTags] = useState<string[]>(initial?.tags ?? [])
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')

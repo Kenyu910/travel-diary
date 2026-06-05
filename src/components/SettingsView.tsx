@@ -5,8 +5,7 @@ import {
   Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
-import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS, TAG_PRESET_COLORS } from '../settings'
-import { useGlobalTags } from '../store'
+import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
 import type { Entry } from '../types'
 import { getPositionCached } from '../utils/geoCache'
 
@@ -116,7 +115,6 @@ function SegmentControl<T extends string>({ options, value, onChange }: {
 
 export function SettingsView({ settings, update, entries, onImport, onExport, onClearAll }: Props) {
   const importRef = useRef<HTMLInputElement>(null)
-  const { tags: globalTags } = useGlobalTags()
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -142,17 +140,6 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
   const totalPhotos = entries.reduce((s, e) => s + e.photos.length, 0)
   const storageKB = Math.round(JSON.stringify(entries).length / 1024)
   const displayName = settings.userName || 'ゲスト'
-
-  const setTagColor = (tag: string, color: string) => {
-    const existing = settings.tagColors[tag]
-    const next = { ...settings.tagColors }
-    if (existing === color) {
-      delete next[tag]   // toggle off
-    } else {
-      next[tag] = color
-    }
-    update({ tagColors: next })
-  }
 
   return (
     <div className="pb-10">
@@ -261,37 +248,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         />
       </Card>
 
-      {/* Tag pin colors */}
-      {globalTags.length > 0 && (
-        <>
-          <SectionHeader icon={Tag} title="タグのピン色" />
-          <Card>
-            {globalTags.map((tag, i) => (
-              <div key={tag} className={`flex items-center gap-3 px-4 py-3 ${i < globalTags.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                <Tag size={14} className="text-purple-400 flex-shrink-0" />
-                <span className="text-sm text-gray-700 flex-1 truncate">#{tag}</span>
-                <div className="flex gap-1.5 flex-wrap justify-end">
-                  {TAG_PRESET_COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setTagColor(tag, color)}
-                      style={{
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: color,
-                        border: settings.tagColors[tag] === color
-                          ? '3px solid #1f2937'
-                          : '2px solid transparent',
-                        outline: settings.tagColors[tag] === color ? '1px solid white' : 'none',
-                        outlineOffset: '-3px',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </Card>
-        </>
-      )}
+      {/* Tag pin colors are now managed in the Tags tab */}
 
       {/* Data */}
       <SectionHeader icon={Database} title="データ管理" />

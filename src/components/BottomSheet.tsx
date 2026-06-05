@@ -65,25 +65,20 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
       />
 
       {/* Sheet
-          Bug fix: use h-[92lvh] (large viewport height) instead of h-[92dvh].
-          dvh shrinks when the iOS keyboard appears, which caused the sheet to
-          resize and lose focus on textarea inputs. lvh stays constant. */}
+          Bug fix: height uses 92vh (not dvh).
+          On iOS, dvh shrinks when the keyboard appears, causing the sheet to resize
+          and lose focus on textarea/input. vh stays constant regardless of keyboard. */}
       <div
-        style={sheetStyle}
+        style={{
+          ...sheetStyle,
+          height: '92vh',
+        }}
         className={`fixed left-0 right-0 bottom-0 z-40 bg-white rounded-t-3xl shadow-2xl
           flex flex-col
           transition-transform duration-300 ease-out
           ${open ? 'translate-y-0' : 'translate-y-full'}
         `}
-        /* Fallback: max-h-[92vh] for browsers that don't support lvh */
-        /* h-[92lvh] using inline style for max compatibility */
       >
-        {/* Apply height via inline style for lvh support with vh fallback */}
-        <style>{`
-          .bottom-sheet-inner { height: min(92lvh, 92vh); max-height: 92dvh; }
-          @supports (height: 1lvh) { .bottom-sheet-inner { height: 92lvh; max-height: none; } }
-        `}</style>
-        <div className="bottom-sheet-inner flex flex-col w-full">
           {/* Drag handle — touch here to swipe close */}
           <div
             className="flex-shrink-0 flex items-center justify-between px-5 pt-3 pb-2 cursor-grab active:cursor-grabbing"
@@ -107,7 +102,6 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
           <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
             {children}
           </div>
-        </div>
       </div>
     </>
   )
