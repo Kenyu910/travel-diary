@@ -1,16 +1,32 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
-import { Search, X } from 'lucide-react'
+import { Search, X, MapPin, LocateFixed } from 'lucide-react'
+import { getPositionCached } from '../utils/geoCache'
+
+type NearbyResult = {
+  placeId: string
+  name: string
+  lat: number
+  lng: number
+  vicinity: string
+}
 
 type Props = {
   onPlaceSelected: (lat: number, lng: number, name: string) => void
+  /** Pass mapRef so we can bias searches toward the current map center */
+  mapRef?: React.MutableRefObject<any>
 }
 
-export function PlacesSearch({ onPlaceSelected }: Props) {
+export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const serviceDivRef = useRef<HTMLDivElement | null>(null)
   const placesLib = useMapsLibrary('places')
   const [value, setValue] = useState('')
+  const [nearbyResults, setNearbyResults] = useState<NearbyResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
 
+  // Setup Places Autocomplete for specific place name searches
   useEffect(() => {
     if (!placesLib || !inputRef.current) return
 
@@ -24,71 +40,182 @@ export function PlacesSearch({ onPlaceSelected }: Props) {
         componentRestrictions: { country: 'jp' },
       }
       if (bounds) opts.bounds = bounds
-
-      const autocomplete = new placesLib.Autocomplete(inputRef.current, opts)
-      const listener = autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace()
+      const ac = new placesLib.Autocomplete(inputRef.current, opts)
+      const listener = ac.addListener('place_changed', () => {
+        const place = ac.getPlace()
         const loc = place.geometry?.location
         if (loc) {
           const name = place.name || place.formatted_address || ''
           setValue(name)
+          setShowDropdown(false)
+          setNearbyResults([])
           inputRef.current?.blur()
           onPlaceSelected(loc.lat(), loc.lng(), name)
         }
       })
       return () => {
-        try { G?.event?.removeListener(listener) } catch { /* ignore */ }
+        try { G?.event?.removeListener(listener) } catch {}
       }
     }
 
-    // Bias toward current location (within ~5km radius)
-    // Bug fix: useEffect cleanup must be returned synchronously
     let cleanup = () => {}
     if (navigator.geolocation && G) {
-      cleanup = createAutoComplete() // start without bias immediately
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const { latitude: lat, longitude: lng } = pos.coords
-          const d = 0.05
-          const bounds = new G.LatLngBounds(
-            new G.LatLng(lat - d, lng - d),
-            new G.LatLng(lat + d, lng + d)
-          )
-          cleanup = createAutoComplete(bounds)
-        },
-        () => {}
-      )
+      cleanup = createAutoComplete()
+      // Use cached position — no repeated permission prompt
+      getPositionCached((lat, lng) => {
+        const d = 0.05
+        const bounds = new G.LatLngBounds(
+          new G.LatLng(lat - d, lng - d),
+          new G.LatLng(lat + d, lng + d),
+        )
+        cleanup = createAutoComplete(bounds)
+      })
     } else {
       cleanup = createAutoComplete()
     }
     return () => cleanup()
   }, [placesLib, onPlaceSelected])
 
+  /** Text search for keyword like "ラーメン" — shows nearby results list */
+  const handleNearbySearch = useCallback(() => {
+    if (!value.trim() || !placesLib || !serviceDivRef.current) return
+    setSearching(true)
+    setShowDropdown(true)
+    setNearbyResults([])
+
+    const service = new placesLib.PlacesService(serviceDivRef.current)
+
+    const doSearch = (location?: { lat: number; lng: number }) => {
+      const req: any = { query: value.trim() }
+      if (location) {
+        req.location = location
+        req.radius = 2000
+      } else if (mapRef?.current) {
+        const center = mapRef.current.getCenter?.()
+        if (center) { req.location = { lat: center.lat(), lng: center.lng() }; req.radius = 2000 }
+      }
+      service.textSearch(req, (results: any, status: any) => {
+        setSearching(false)
+        if (status === 'OK' && results) {
+          setNearbyResults(results.slice(0, 12).map((p: any) => ({
+            placeId: p.place_id,
+            name: p.name,
+            lat: p.geometry.location.lat(),
+            lng: p.geometry.location.lng(),
+            vicinity: p.formatted_address || p.vicinity || '',
+          })))
+        } else {
+          setNearbyResults([])
+        }
+      })
+    }
+
+    getPositionCached(
+      (lat, lng) => doSearch({ lat, lng }),
+      () => doSearch(),
+    )
+  }, [value, placesLib, mapRef])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleNearbySearch()
+    }
+    if (e.key === 'Escape') {
+      setShowDropdown(false)
+    }
+  }
+
   const handleClear = useCallback(() => {
     setValue('')
+    setNearbyResults([])
+    setShowDropdown(false)
     inputRef.current?.blur()
   }, [])
 
+  const handleSelectResult = (r: NearbyResult) => {
+    setValue(r.name)
+    setShowDropdown(false)
+    setNearbyResults([])
+    onPlaceSelected(r.lat, r.lng, r.name)
+  }
+
   return (
     <div className="relative">
-      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        placeholder="場所を検索..."
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        className="w-full bg-white/92 backdrop-blur-sm border border-gray-200/70 rounded-2xl pl-8 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 shadow-sm"
-      />
-      {value && (
-        <button
-          onMouseDown={e => { e.preventDefault(); handleClear() }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
-        >
-          <X size={14} />
-        </button>
+      {/* Hidden div for PlacesService attribution (required by Google Maps ToS) */}
+      <div ref={serviceDivRef} style={{ display: 'none' }} />
+
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => {
+            setValue(e.target.value)
+            if (!e.target.value) { setShowDropdown(false); setNearbyResults([]) }
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="場所・ラーメンなどキーワード検索..."
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          className="w-full bg-white/95 backdrop-blur-sm border border-gray-200/70 rounded-2xl pl-8 pr-16 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 shadow-sm"
+        />
+        {value && (
+          <>
+            {/* Nearby search button */}
+            <button
+              onMouseDown={e => { e.preventDefault(); handleNearbySearch() }}
+              className="absolute right-8 top-1/2 -translate-y-1/2 text-pink-400 z-10 p-0.5"
+              title="周辺を検索"
+            >
+              <LocateFixed size={15} />
+            </button>
+            {/* Clear button */}
+            <button
+              onMouseDown={e => { e.preventDefault(); handleClear() }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+            >
+              <X size={14} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Nearby results dropdown */}
+      {showDropdown && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-72 overflow-y-auto">
+          {searching ? (
+            <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-400">
+              <div className="w-4 h-4 border-2 border-pink-300 border-t-transparent rounded-full animate-spin" />
+              検索中...
+            </div>
+          ) : nearbyResults.length === 0 ? (
+            <div className="py-4 text-sm text-gray-400 text-center">
+              見つかりませんでした
+            </div>
+          ) : (
+            <>
+              <p className="text-[10px] font-semibold text-gray-400 px-3 pt-2.5 pb-1 uppercase tracking-wider">
+                周辺の検索結果
+              </p>
+              {nearbyResults.map(r => (
+                <button
+                  key={r.placeId}
+                  onMouseDown={e => { e.preventDefault(); handleSelectResult(r) }}
+                  onClick={() => handleSelectResult(r)}
+                  className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 border-b border-gray-50 last:border-0 active:bg-pink-50 transition-colors"
+                >
+                  <MapPin size={13} className="text-pink-400 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{r.name}</p>
+                    <p className="text-xs text-gray-400 truncate leading-relaxed">{r.vicinity}</p>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       )}
     </div>
   )

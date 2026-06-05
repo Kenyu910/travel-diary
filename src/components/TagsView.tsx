@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Tag, MapPin, Calendar, ChevronRight, Plus, X, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { Tag, MapPin, Calendar, ChevronRight, Plus, X, ChevronDown, ChevronUp, Check, ArrowUp, ArrowDown } from 'lucide-react'
 import { useGlobalTags } from '../store'
 import type { Entry } from '../types'
 
@@ -11,7 +11,7 @@ type Props = {
 }
 
 export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Props) {
-  const { tags: globalTags, addTag, removeTag, setTags } = useGlobalTags()
+  const { tags: globalTags, addTag, removeTag, reorderTag, setTags } = useGlobalTags()
   const [newTagInput, setNewTagInput] = useState('')
   const [showAddInput, setShowAddInput] = useState(false)
   const [showTagList, setShowTagList] = useState(false)
@@ -53,8 +53,7 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
 
   const commitEdit = () => {
     if (!editingTag || !editValue.trim() || editValue.trim() === editingTag) {
-      setEditingTag(null)
-      return
+      setEditingTag(null); return
     }
     const newName = editValue.trim()
     setTags(prev => prev.map(t => t === editingTag ? newName : t))
@@ -120,7 +119,7 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
                 const isEditing = editingTag === tag
                 const isConfirming = confirmDelete === tag
                 return (
-                  <div key={tag} className={`flex items-center gap-2 px-3 py-3 ${i < globalTags.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                  <div key={tag} className={`flex items-center gap-1.5 px-3 py-2.5 ${i < globalTags.length - 1 ? 'border-b border-gray-50' : ''}`}>
                     <Tag size={13} className="text-purple-400 flex-shrink-0" />
                     {isEditing ? (
                       <input
@@ -136,7 +135,26 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
                       </button>
                     )}
                     {count > 0 && !isEditing && (
-                      <span className="text-xs bg-purple-50 text-purple-400 px-2 py-0.5 rounded-full flex-shrink-0">{count}件</span>
+                      <span className="text-xs bg-purple-50 text-purple-400 px-1.5 py-0.5 rounded-full flex-shrink-0">{count}</span>
+                    )}
+                    {/* Reorder buttons */}
+                    {!isEditing && !isConfirming && (
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
+                        <button
+                          onClick={() => i > 0 && reorderTag(i, i - 1)}
+                          disabled={i === 0}
+                          className={`w-5 h-5 rounded flex items-center justify-center ${i === 0 ? 'text-gray-200' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                          <ArrowUp size={10} />
+                        </button>
+                        <button
+                          onClick={() => i < globalTags.length - 1 && reorderTag(i, i + 1)}
+                          disabled={i === globalTags.length - 1}
+                          className={`w-5 h-5 rounded flex items-center justify-center ${i === globalTags.length - 1 ? 'text-gray-200' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                          <ArrowDown size={10} />
+                        </button>
+                      </div>
                     )}
                     {isEditing ? (
                       <button onClick={commitEdit} className="w-7 h-7 rounded-full bg-purple-100 text-purple-500 flex items-center justify-center flex-shrink-0">
@@ -208,7 +226,12 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry }: Pro
                       </div>
                   }
                   <div className="flex-1 min-w-0">
-                    {entry.placeName && <p className="text-xs font-semibold text-pink-500 truncate">📍 {entry.placeName}</p>}
+                    {entry.placeName && (
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <MapPin size={10} className="text-pink-400 flex-shrink-0" />
+                        <p className="text-xs font-semibold text-pink-500 truncate">{entry.placeName}</p>
+                      </div>
+                    )}
                     <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
                     <span className="flex items-center gap-1 text-xs text-gray-400">
                       <Calendar size={10} />{entry.date}

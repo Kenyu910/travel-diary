@@ -6,6 +6,7 @@ import { Utensils, MapPin, EyeOff, Coffee, Star } from 'lucide-react'
 import type { Entry } from '../types'
 import type { AppSettings } from '../settings'
 import { MAP_STYLES } from '../settings'
+import { setCachedGeo } from '../utils/geoCache'
 
 type FoodPlace = { placeId: string; name: string; lat: number; lng: number; vicinity: string; rating?: number }
 type NativePoi  = { placeId: string; name: string; lat: number; lng: number; address: string }
@@ -24,12 +25,27 @@ type Props = {
   searchPin: SearchPin | null
   onSearchPinClick: () => void
   onClearSearchPin: () => void
-  sheetOpen: boolean   // when true: disable map gestures so sheet swipe works
+  sheetOpen: boolean
 }
 
 function MapRefSetter({ mapRef }: { mapRef: Props['mapRef'] }) {
   const map = useMap()
   useEffect(() => { mapRef.current = map; return () => { mapRef.current = null } }, [map, mapRef])
+  return null
+}
+
+/** Hides Google Maps default POI labels when food/cafe mode is active */
+function MapStylesController({ foodMode }: { foodMode: string }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!map) return
+    map.setOptions({
+      styles: foodMode !== 'none' ? [
+        { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.park', elementType: 'geometry', stylers: [{ visibility: 'on' }] },
+      ] : [],
+    })
+  }, [map, foodMode])
   return null
 }
 
@@ -58,6 +74,22 @@ const InfoBtn = ({ label, bg, color, onClick }: { label: string; bg: string; col
   </button>
 )
 
+function getEntryPinColor(entry: Entry, tagColors: Record<string, string>): string {
+  if (entry.wantToVisit) return '#7c3aed'
+  for (const tag of entry.tags) {
+    if (tagColors[tag]) return tagColors[tag]
+  }
+  return '#ec4899'
+}
+
+function darkenHex(hex: string): string {
+  const n = parseInt(hex.replace('#', ''), 16)
+  const r = Math.max(0, ((n >> 16) & 0xff) - 40)
+  const g = Math.max(0, ((n >> 8) & 0xff) - 40)
+  const b = Math.max(0, (n & 0xff) - 40)
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
+}
+
 export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, onPoiClick, settings, filterTag, searchQuery, mapRef, searchPin, onSearchPinClick, onClearSearchPin, sheetOpen }: Props) {
   const map = useMap()
   const placesLib = useMapsLibrary('places')
@@ -76,8 +108,13 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   useEffect(() => {
     if (!navigator.geolocation) return
     const id = navigator.geolocation.watchPosition(
-      p => setCurrentPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {}, { enableHighAccuracy: true, maximumAge: 10000 }
+      p => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+        setCurrentPos(pos)
+        setCachedGeo(pos.lat, pos.lng)
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000 },
     )
     return () => navigator.geolocation.clearWatch(id)
   }, [])
@@ -85,14 +122,14 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const searchNearby = (type: 'restaurant' | 'cafe') => {
     if (foodMode === type) {
       setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null)
-      setShowDiaryPins(true)  // restore diary pins when food mode off
+      setShowDiaryPins(true)
       return
     }
     if (!placesService || !map) return
     setFoodMode(type); setLoadingFood(true)
-    setFoodPlaces([])  // Bug fix: clear previous results before new search
+    setFoodPlaces([])
     setSelectedFood(null)
-    setShowDiaryPins(false)   // hide diary pins when food mode on
+    setShowDiaryPins(false)
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }
     placesService.nearbySearch(
@@ -106,7 +143,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             vicinity: p.vicinity || '', rating: p.rating,
           })))
         }
-      }
+      },
     )
   }
 
@@ -139,7 +176,6 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       mapId="DEMO_MAP_ID"
       disableDefaultUI={true}
       zoomControl={true}
-      // Disable map gestures when sheet is open so swipe-close works
       gestureHandling={sheetOpen ? 'none' : 'greedy'}
       className="w-full h-full"
       onClick={e => {
@@ -147,7 +183,6 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         const lng = e.detail.latLng?.lng
         const placeId = e.detail.placeId
         if (placeId && placesService) {
-          // Prevent native Google Maps info window from showing
           e.stop()
           setSelectedFood(null); onClearSearchPin()
           placesService.getDetails({ placeId, fields: ['name', 'geometry', 'formatted_address', 'rating'] }, (place: any, status: any) => {
@@ -164,34 +199,40 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       }}
     >
       <MapRefSetter mapRef={mapRef} />
+      <MapStylesController foodMode={foodMode} />
 
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
 
-      {/* Search result pin — purple */}
+      {/* Search result pin */}
       {searchPin && (
         <AdvancedMarker position={{ lat: searchPin.lat, lng: searchPin.lng }} onClick={onSearchPinClick}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ background: '#7c3aed', color: 'white', borderRadius: 12, padding: '4px 10px', fontSize: 12, fontWeight: 600, marginBottom: 4, whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', boxShadow: '0 2px 8px rgba(124,58,237,0.4)' }}>
-              📍 ここに記録する
+              ここに記録する
             </div>
             <div style={{ width: 20, height: 20, background: '#7c3aed', borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 6px rgba(124,58,237,0.4)' }} />
           </div>
         </AdvancedMarker>
       )}
 
-      {/* Diary pins — pink teardrop */}
-      {showDiaryPins && diaryEntries.map(entry => (
-        <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
-          onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
-          <Pin
-            background={entry.id === selectedEntryId ? '#ef4444' : '#ec4899'}
-            borderColor={entry.id === selectedEntryId ? '#dc2626' : '#db2777'}
-            glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0}
-          />
-        </AdvancedMarker>
-      ))}
+      {/* Diary pins — color driven by tag settings */}
+      {showDiaryPins && diaryEntries.map(entry => {
+        const color = getEntryPinColor(entry, settings.tagColors)
+        const border = darkenHex(color)
+        return (
+          <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
+            onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
+            <Pin
+              background={entry.id === selectedEntryId ? border : color}
+              borderColor={border}
+              glyphColor="white"
+              scale={entry.id === selectedEntryId ? 1.2 : 1.0}
+            />
+          </AdvancedMarker>
+        )
+      })}
 
-      {/* Want-to-visit pins — purple */}
+      {/* Want-to-visit pins — purple + star */}
       {showDiaryPins && wishlistEntries.map(entry => (
         <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
           onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
@@ -214,7 +255,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       {selectedEntry && (
         <InfoWindow position={{ lat: selectedEntry.lat, lng: selectedEntry.lng }} pixelOffset={[0, -40]} onClose={() => {}}>
           <div style={{ minWidth: 140, maxWidth: 200 }}>
-            {selectedEntry.placeName && <p style={{ fontSize: 11, fontWeight: 600, color: '#ec4899', marginBottom: 2 }}>📍 {selectedEntry.placeName}</p>}
+            {selectedEntry.placeName && <p style={{ fontSize: 11, fontWeight: 600, color: '#ec4899', marginBottom: 2 }}>{selectedEntry.placeName}</p>}
             <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{selectedEntry.title}</p>
             <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{selectedEntry.date}</p>
           </div>
@@ -228,7 +269,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{selectedFood.name}</p>
             <p style={{ fontSize: 11, color: '#6b7280' }}>{selectedFood.vicinity}</p>
             {selectedFood.rating && <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>★ {selectedFood.rating}</p>}
-            <InfoBtn label="📖 日記を書く" bg="#ec4899" color="white" onClick={() => { setSelectedFood(null); onPoiClick(selectedFood.lat, selectedFood.lng, selectedFood.name) }} />
+            <InfoBtn label="日記を書く" bg="#ec4899" color="white" onClick={() => { setSelectedFood(null); onPoiClick(selectedFood.lat, selectedFood.lng, selectedFood.name) }} />
             <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(selectedFood.lat, selectedFood.lng, selectedFood.placeId)} />
           </div>
         </InfoWindow>
@@ -240,7 +281,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
           <div style={{ minWidth: 160 }}>
             <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{nativePoi.name}</p>
             {nativePoi.address && <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{nativePoi.address}</p>}
-            <InfoBtn label="📖 日記を書く" bg="#ec4899" color="white" onClick={() => { setNativePoi(null); onPoiClick(nativePoi.lat, nativePoi.lng, nativePoi.name) }} />
+            <InfoBtn label="日記を書く" bg="#ec4899" color="white" onClick={() => { setNativePoi(null); onPoiClick(nativePoi.lat, nativePoi.lng, nativePoi.name) }} />
             <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(nativePoi.lat, nativePoi.lng, nativePoi.placeId)} />
           </div>
         </InfoWindow>

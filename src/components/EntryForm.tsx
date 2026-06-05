@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark } from 'lucide-react'
+import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed } from 'lucide-react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
 import { useGlobalTags } from '../store'
+import { getPositionCached } from '../utils/geoCache'
 import type { Entry } from '../types'
 
 type Props = {
@@ -37,15 +38,15 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
         onChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
       }
     })
-    // Bias toward current position
+    // Bias toward current position — use cache to avoid repeated prompts
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
+      getPositionCached((lat, lng) => {
         const d = 0.05
         ac.setBounds(new G.LatLngBounds(
-          new G.LatLng(pos.coords.latitude - d, pos.coords.longitude - d),
-          new G.LatLng(pos.coords.latitude + d, pos.coords.longitude + d)
+          new G.LatLng(lat - d, lng - d),
+          new G.LatLng(lat + d, lng + d)
         ))
-      }, () => {})
+      })
     }
     return () => {
       try { G?.event?.removeListener(listener) } catch { /* ignore */ }
@@ -159,7 +160,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
           <MapPin size={11} /> 場所名
           {defaultPlaceName && !initial && (
-            <span className="text-[10px] text-pink-400 ml-1">📍 自動入力</span>
+            <span className="flex items-center gap-0.5 text-[10px] text-pink-400 ml-1"><LocateFixed size={9} /> 自動入力</span>
           )}
         </label>
         <PlaceNameInput

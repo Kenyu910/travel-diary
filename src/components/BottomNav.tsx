@@ -16,11 +16,23 @@ const tabs: { key: Tab; Icon: React.ElementType; label: string }[] = [
   { key: 'settings', Icon: Settings,     label: '設定'   },
 ]
 
+// Bug fix: position:fixed so the nav never scrolls with page content.
+// z-20 keeps it above the map but below BottomSheet (z-40) and its backdrop (z-30).
 export function BottomNav({ active, onChange, entryCount }: Props) {
   return (
     <nav
-      className="flex bg-white border-t border-gray-100 safe-bottom flex-shrink-0"
-      style={{ boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)' }}
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        background: 'white',
+        borderTop: '1px solid #f3f4f6',
+        boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
+      }}
+      className="flex"
     >
       {tabs.map(({ key, Icon, label }) => {
         const isActive = active === key

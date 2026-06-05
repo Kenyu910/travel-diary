@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getPositionCached } from './utils/geoCache'
 
 export type MapStyle = 'roadmap' | 'satellite' | 'terrain'
 export type ListStyle = 'card' | 'compact'
@@ -13,6 +14,7 @@ export type AppSettings = {
   listStyle: ListStyle
   defaultSort: SortOrder
   showHint: boolean
+  tagColors: Record<string, string>   // tag name → hex color
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   listStyle: 'card',
   defaultSort: 'newest',
   showHint: true,
+  tagColors: {},
 }
 
 const KEY = 'travel-diary-settings'
@@ -43,8 +46,20 @@ export function saveSettings(s: AppSettings) {
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
+  const isFirstRender = useRef(true)
+
+  // Auto-detect location on first install (no saved settings)
+  useEffect(() => {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) {
+      getPositionCached((lat, lng) => {
+        setSettings(prev => ({ ...prev, defaultLat: lat, defaultLng: lng }))
+      })
+    }
+  }, []) // run once
 
   useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
     saveSettings(settings)
   }, [settings])
 
@@ -60,15 +75,57 @@ export const MAP_STYLES: Record<MapStyle, { label: string; mapTypeId: string }> 
   terrain:   { label: '地形',     mapTypeId: 'terrain'   },
 }
 
+export const TAG_PRESET_COLORS = [
+  '#ec4899', // pink
+  '#a855f7', // purple
+  '#3b82f6', // blue
+  '#22c55e', // green
+  '#f97316', // orange
+  '#14b8a6', // teal
+  '#ef4444', // red
+  '#eab308', // yellow
+]
+
 export const CHANGELOG = [
+  {
+    version: '2.0.0',
+    date: '2026-06-05',
+    title: '大型アップデート',
+    changes: [
+      'タブバーを画面固定に変更（スクロール追従バグ修正）',
+      'メモ編集時にキーボードが閉じるバグを修正',
+      '位置情報をキャッシュしてアクセス許可ポップアップを削減',
+      '「ラーメン」などのキーワードで周辺店舗を一覧表示',
+      '同じ店の過去記録をタップ時に表示・マップへジャンプ可能',
+      'グルメモード中はGoogle地図のデフォルトPOIを非表示に',
+      'タグごとにマップピンの色を設定できる機能を追加',
+      'タグを上下ボタンで並び替え可能に',
+      '絵文字をLucideアイコンに統一',
+      '設定の初回デフォルト位置を現在地に自動設定',
+    ],
+  },
+  {
+    version: '1.9.1',
+    date: '2026-06-05',
+    title: 'バグ修正',
+    changes: [
+      'PlacesSearch: クリーンアップ関数の漏れを修正',
+      'EntryForm: 座標表示が古い値のままになるバグを修正',
+      'BottomSheet: スワイプ後にdragYがリセットされないバグを修正',
+      'CalendarView: 月切替で日付選択がリセットされないバグを修正',
+      'DiaryList: タブ切替でフィルターが残るバグを修正',
+      'MapView: 食べ物モード切替時に古いピンが残るバグを修正',
+      'store.ts: 初回マウント時の不要なlocalStorage書き込みを削除',
+    ],
+  },
   {
     version: '1.8.1',
     date: '2026-06-04',
     title: 'バグ修正',
     changes: [
-      '🐛 PlaceNameInput: useMemo→useEffect に修正（副作用の正しい使い方）',
-      '🐛 設定トグルのクリップ問題を修正（shadow→ring）',
-      '⭐ 行ってみたい記録を紫アクセントで視覚的に区別',
+      'PlaceNameInput: useMemo→useEffect に修正',
+      '設定トグルのクリップ問題を修正',
+      '行ってみたい記録を紫アクセントで視覚的に区別',
     ],
   },
   {
@@ -76,26 +133,12 @@ export const CHANGELOG = [
     date: '2026-06-04',
     title: '大規模改善・新機能',
     changes: [
-      '🐛 ピンタップ後キャンセルされるバグ修正',
-      '🐛 日記選択時マップが背景に出る問題修正',
-      '🐛 タグフィルターでマップに飛ばない',
-      '⭐ 行ってみたいモード（紫ピン）',
-      '🏷️ タグ名変更・タグ一覧折り畳み',
-      '📅 Googleカレンダー連携',
-      '🔍 場所名フィールドをGoogle Places検索対応に',
-      '📲 BottomSheetスワイプ閉じ対応',
-      '🗺️ アプリ名削除・ヒント削除・検索バー全幅',
-    ],
-  },
-  {
-    version: '1.7.1',
-    date: '2026-06-04',
-    title: 'バグ修正',
-    changes: [
-      '🐛 タブ切替時にシートが閉じない問題を修正',
-      '🐛 全削除後にマップへ戻らない問題を修正',
-      '📱 全タブにiPhone対応のセーフエリアヘッダーを追加',
-      '📍 現在地ドットをより大きく・視認しやすく改善',
+      'ピンタップ後キャンセルされるバグ修正',
+      '日記選択時マップが背景に出る問題修正',
+      '行ってみたいモード（紫ピン）',
+      'タグ名変更・タグ一覧折り畳み',
+      '場所名フィールドをGoogle Places検索対応に',
+      'BottomSheetスワイプ閉じ対応',
     ],
   },
   {
@@ -103,36 +146,11 @@ export const CHANGELOG = [
     date: '2026-06-04',
     title: 'フルスクリーンタブ・グルメ機能強化',
     changes: [
-      '📱 タブ切替をフルスクリーン表示に変更',
-      '🔍 検索→マップ移動→紫ピンで選択式に変更',
-      '🏷️ タグをプルダウン形式（折り畳み）に',
-      '📅 iPhoneカレンダー連携 (.ics)',
-      '☕ カフェボタン追加（紫マーカー）',
-      '📍 現在地を青点滅ドットで表示',
-      '🔭 デフォルトズームを15に変更',
-    ],
-  },
-  {
-    version: '1.6.1',
-    date: '2026-06-04',
-    title: 'タグタブ管理・UI改善',
-    changes: [
-      '🏷️ タグタブからタグを作成・削除できるように',
-      '🗺️ マップタブ以外でGoogle Mapsを非表示に',
-      '📍 日記カードに店舗名を目立つ表示',
-    ],
-  },
-  {
-    version: '1.6.0',
-    date: '2026-06-04',
-    title: 'グルメモード・タグ選択式・場所自動入力',
-    changes: [
-      '🍽️ グルメモード: 周辺飲食店をマップに表示',
-      '📖 飲食店タップ → 日記作成（場所名自動入力）',
-      '👁 記録ピンの表示/非表示トグル',
-      '🏷️ タグを事前作成して選択式に変更',
-      '📝 写真・評価・メモはすべて任意',
-      '📍 検索を現在地から近い順に表示',
+      'タブ切替をフルスクリーン表示に変更',
+      '検索→マップ移動→紫ピンで選択式に変更',
+      'タグをプルダウン形式に',
+      'カフェボタン追加（紫マーカー）',
+      '現在地を青点滅ドットで表示',
     ],
   },
   {
@@ -140,65 +158,9 @@ export const CHANGELOG = [
     date: '2026-06-04',
     title: 'Google Maps に移行',
     changes: [
-      '🗺️ OpenStreetMap → Google Maps に変更',
-      '🛰️ マップスタイル: 標準・衛星写真・地形',
-      '📍 Google Maps マーカー（ピンクカラー）',
-      '⚡ マップ操作がよりスムーズに',
-    ],
-  },
-  {
-    version: '1.4.0',
-    date: '2026-06-04',
-    title: 'アイコン刷新・星評価・バグ大修正',
-    changes: [
-      '🎨 フォーク＋日記テーマのオリジナルアイコン',
-      '📲 PWAインストール対応（ホーム画面追加）',
-      '⭐ 星評価機能（1〜5）',
-      '📍 現在地から即追加ボタン（マップ上）',
-      '🐛 設定の項目がタップできない問題を修正',
-      '🐛 シートを閉じられない問題を修正',
-      '🐛 マップ検索でスタックする問題を修正',
-      '🐛 タブとシートの同期を全面修正',
-    ],
-  },
-  {
-    version: '1.3.0',
-    date: '2026-06-04',
-    title: 'Lucideアイコン・新機能・バグ修正',
-    changes: [
-      '📅 カレンダービュー（月別記録一覧）',
-      '🖼️ 写真ライトボックス（フルスクリーン表示）',
-      '🔗 Web Share APIで記録をシェア',
-      '🗺️ マップ上でタグ・検索フィルタリング',
-      '🎨 絵文字をLucideアイコンに統一',
-      '🐛 マップ設定変更の即時反映を修正',
-      '🐛 タブとシートの同期ズレを修正',
-      '🐛 インポート後の日付ソートを修正',
-    ],
-  },
-  {
-    version: '1.2.0',
-    date: '2026-06-04',
-    title: '設定・インポート機能追加',
-    changes: [
-      '⚙️ 設定タブ追加（マップ・表示・データ管理）',
-      '📊 統計情報ページ追加',
-      '📥 JSONデータのインポート機能',
-      '🗺️ マップスタイル切替（標準・水彩・モノクロ）',
-      '📋 記録一覧の表示形式切替（カード/コンパクト）',
-      '👤 ユーザー名設定',
-    ],
-  },
-  {
-    version: '1.1.0',
-    date: '2026-06-04',
-    title: 'iPhone対応 UIリデザイン',
-    changes: [
-      '📱 iPhone専用レイアウト（フルスクリーンマップ）',
-      '🎨 パステルカラーのかわいいデザイン',
-      '🔽 ボトムシート（下から引き出す操作）',
-      '🏷️ タグタブ追加（タグ一覧・絞り込み）',
-      '🔍 検索・ソート機能',
+      'OpenStreetMap → Google Maps に変更',
+      'マップスタイル: 標準・衛星写真・地形',
+      'Google Maps マーカー（ピンクカラー）',
     ],
   },
   {
@@ -206,12 +168,10 @@ export const CHANGELOG = [
     date: '2026-06-04',
     title: '初回リリース',
     changes: [
-      '🗺️ OpenStreetMapでの地図表示',
-      '📖 日記記録（タイトル・日付・メモ・タグ・写真）',
-      '📍 マップピンで場所を記録',
-      '🏷️ タグ付け・フィルタリング',
-      '💾 ローカルストレージ保存',
-      '📤 JSONエクスポート',
+      'マップでの場所記録',
+      '日記機能（タイトル・日付・メモ・タグ・写真）',
+      'タグ付け・フィルタリング',
+      'ローカルストレージ保存',
     ],
   },
 ]

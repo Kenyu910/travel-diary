@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, X, Upload, LayoutGrid, List, Clock, CalendarDays, MapPin, ChevronRight } from 'lucide-react'
+import { Search, X, Upload, LayoutGrid, List, Clock, CalendarDays, MapPin, ChevronRight, BookOpen, Bookmark } from 'lucide-react'
 import type { Entry } from '../types'
 import type { AppSettings } from '../settings'
 
@@ -18,7 +18,6 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
   const [listStyle, setListStyle] = useState(settings.listStyle)
   const [diaryMode, setDiaryMode] = useState<'diary' | 'wishlist'>('diary')
 
-  // Split entries by mode
   const modeEntries = diaryMode === 'diary'
     ? entries.filter(e => !e.wantToVisit)
     : entries.filter(e => e.wantToVisit)
@@ -52,7 +51,7 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
             diaryMode === 'diary' ? 'bg-white text-pink-500 shadow-sm' : 'text-gray-500'
           }`}
         >
-          <span>📖</span>
+          <BookOpen size={14} />
           <span>日記</span>
           {diaryCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'diary' ? 'bg-pink-100 text-pink-500' : 'bg-gray-200 text-gray-500'}`}>{diaryCount}</span>}
         </button>
@@ -62,7 +61,7 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
             diaryMode === 'wishlist' ? 'bg-white text-purple-500 shadow-sm' : 'text-gray-500'
           }`}
         >
-          <span>⭐</span>
+          <Bookmark size={14} />
           <span>行きたい</span>
           {wishlistCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'wishlist' ? 'bg-purple-100 text-purple-500' : 'bg-gray-200 text-gray-500'}`}>{wishlistCount}</span>}
         </button>
@@ -149,7 +148,8 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
               }`}>
               {entry.wantToVisit && (
                 <div className="bg-purple-50 px-3.5 py-1.5 flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-purple-500">⭐ 行ってみたい</span>
+                  <Bookmark size={12} className="text-purple-500" />
+                  <span className="text-xs font-semibold text-purple-500">行ってみたい</span>
                 </div>
               )}
               {entry.photos.length > 0 && <img src={entry.photos[0]} className="w-full h-36 object-cover" />}

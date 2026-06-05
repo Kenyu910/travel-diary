@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { PlusCircle, Navigation2, Plus } from 'lucide-react'
+import { PlusCircle, Navigation2, Plus, MapPin, ChevronRight } from 'lucide-react'
 import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
@@ -15,12 +15,23 @@ import { EntryDetail } from './components/EntryDetail'
 import { SettingsView } from './components/SettingsView'
 import { useEntries } from './store'
 import { useSettings } from './settings'
+import { getPositionCached } from './utils/geoCache'
 import type { Entry } from './types'
 
-type Sheet = 'form' | 'detail' | 'edit' | null
+type Sheet = 'form' | 'detail' | 'edit' | 'poi-history' | null
 
 const SHEET_TITLES: Record<NonNullable<Sheet>, string> = {
-  form: '新しい記録', edit: '記録を編集', detail: '',
+  form: '新しい記録', edit: '記録を編集', detail: '', 'poi-history': '過去の記録',
+}
+
+/** Check if two coordinates are within ~100m of each other */
+const NEARBY_THRESHOLD = 0.001
+function findNearbyEntries(entries: Entry[], lat: number, lng: number): Entry[] {
+  return entries.filter(e =>
+    !e.wantToVisit &&
+    Math.abs(e.lat - lat) < NEARBY_THRESHOLD &&
+    Math.abs(e.lng - lng) < NEARBY_THRESHOLD
+  )
 }
 
 function AppContent() {
@@ -34,6 +45,7 @@ function AppContent() {
   const [clickedPlaceName, setClickedPlaceName] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [searchPin, setSearchPin] = useState<{ lat: number; lng: number; name: string } | null>(null)
+  const [poiHistoryEntries, setPoiHistoryEntries] = useState<Entry[]>([])
 
   const mapRef = useRef<ReturnType<typeof useMap> | null>(null)
   const sheetRef = useRef<Sheet>(null)
@@ -67,7 +79,6 @@ function AppContent() {
     setTab(t)
   }
 
-  // Bug fix: don't open form if sheet already open (prevents pin-tap cancel)
   const handleMapClick = useCallback((lat: number, lng: number) => {
     if (sheetRef.current !== null) return
     setSearchPin(null)
@@ -97,13 +108,19 @@ function AppContent() {
     setClickedPos({ lat, lng })
     setClickedPlaceName(name)
     setSelectedEntry(null)
-    setSheet('form')
-  }, [])
+    // Check if we have history at this location
+    const nearby = findNearbyEntries(entries, lat, lng)
+    if (nearby.length > 0) {
+      setPoiHistoryEntries(nearby)
+      setSheet('poi-history')
+    } else {
+      setSheet('form')
+    }
+  }, [entries])
 
   const handleQuickAdd = () => {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lng } = pos.coords
+    getPositionCached(
+      (lat, lng) => {
         setClickedPos({ lat, lng })
         setClickedPlaceName('')
         setSelectedEntry(null)
@@ -115,31 +132,35 @@ function AppContent() {
   }
 
   const handleLocate = () => {
-    navigator.geolocation.getCurrentPosition(
-      pos => mapRef.current?.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    getPositionCached(
+      (lat, lng) => mapRef.current?.panTo({ lat, lng }),
       () => alert('位置情報を取得できませんでした。')
     )
   }
 
-  // Bug fix: don't change tab — keep current tab as background (no map behind diary)
   const handleSelectEntry = (entry: Entry) => {
     setSelectedEntry(entry)
     setSheet('detail')
   }
 
+  /** Select entry AND fly to it on the map */
+  const handleSelectEntryFlyTo = (entry: Entry) => {
+    setSelectedEntry(entry)
+    setSheet('detail')
+    setTab('map')
+    setTimeout(() => mapRef.current?.panTo({ lat: entry.lat, lng: entry.lng }), 100)
+  }
+
   const openNewEntry = (_date?: string) => {
-    // Open form immediately with default location, then update with GPS
     setClickedPos({ lat: settings.defaultLat, lng: settings.defaultLng })
     setClickedPlaceName('')
     setSelectedEntry(null)
     setSheet('form')
-    // Try to get precise location in background
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        setClickedPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        reverseGeocode(pos.coords.latitude, pos.coords.longitude, name => setClickedPlaceName(name))
+    getPositionCached(
+      (lat, lng) => {
+        setClickedPos({ lat, lng })
+        reverseGeocode(lat, lng, name => setClickedPlaceName(name))
       },
-      () => {} // ignore error - already opened with default
     )
   }
 
@@ -183,11 +204,12 @@ function AppContent() {
   }
 
   const sheetTitle = sheet ? SHEET_TITLES[sheet] : ''
-
-  // Tab display names
   const TAB_TITLES: Partial<Record<Tab, string>> = {
     list: '日記', calendar: '日程', tags: 'タグ', settings: '設定',
   }
+
+  // Nav height for bottom padding: 56px + safe area
+  const navPb = 'calc(env(safe-area-inset-bottom, 0px) + 64px)'
 
   return (
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
@@ -214,12 +236,11 @@ function AppContent() {
         {/* Map overlays — only when map tab & no sheet */}
         {tab === 'map' && sheet === null && (
           <>
-            {/* Search bar only — no title pill */}
             <div
               className="absolute z-10"
               style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)', left: 16, right: 16 }}
             >
-              <PlacesSearch onPlaceSelected={handlePlaceSelected} />
+              <PlacesSearch onPlaceSelected={handlePlaceSelected} mapRef={mapRef} />
             </div>
 
             {searchPin && (
@@ -245,16 +266,14 @@ function AppContent() {
         )}
       </div>
 
-      {/* Non-map tab content — full screen */}
+      {/* Non-map tab content — full screen, padded so content clears the fixed nav */}
       {tab !== 'map' && (
         <div className="flex-1 flex flex-col overflow-hidden bg-[#fdf6fb]">
-          {/* Unified header */}
           <div
             className="flex-shrink-0 bg-white border-b border-gray-100 px-4 pb-3 flex items-end justify-between"
             style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
           >
             <h1 className="text-lg font-bold text-gray-800">{TAB_TITLES[tab]}</h1>
-            {/* + button for calendar tab */}
             {tab === 'calendar' && (
               <button onClick={() => openNewEntry()}
                 className="w-8 h-8 rounded-full bg-pink-400 flex items-center justify-center shadow-sm">
@@ -263,7 +282,8 @@ function AppContent() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'hidden', scrollbarGutter: 'stable' }}>
+          {/* Add paddingBottom so content doesn't hide behind fixed nav */}
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'hidden', scrollbarGutter: 'stable', paddingBottom: navPb }}>
             {tab === 'list' && (
               <DiaryList entries={entries} filterTag={filterTag}
                 onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
@@ -274,7 +294,7 @@ function AppContent() {
             )}
             {tab === 'tags' && (
               <TagsView entries={entries} filterTag={filterTag}
-                onFilterTag={setFilterTag}  // stays on tags tab
+                onFilterTag={setFilterTag}
                 onSelectEntry={handleSelectEntry} />
             )}
             {tab === 'settings' && (
@@ -286,8 +306,7 @@ function AppContent() {
         </div>
       )}
 
-      {tab === 'map' && <div className="flex-1" />}
-
+      {/* Fixed BottomNav (position:fixed in component) — no flex spacer needed */}
       <BottomNav active={tab} onChange={handleTabChange} entryCount={entries.length} />
 
       <BottomSheet open={sheet !== null} onClose={closeSheet} title={sheetTitle}>
@@ -310,6 +329,46 @@ function AppContent() {
           <EntryForm lat={selectedEntry.lat} lng={selectedEntry.lng}
             onSave={handleSave} onCancel={() => setSheet('detail')}
             initial={selectedEntry} />
+        )}
+        {/* POI History — shown when tapping a place that has existing diary entries */}
+        {sheet === 'poi-history' && clickedPos && (
+          <div className="px-4 pt-2 pb-8">
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin size={16} className="text-pink-400 flex-shrink-0" />
+              <p className="font-bold text-gray-800 text-base truncate">{clickedPlaceName || '選択した場所'}</p>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">この周辺の過去の記録</p>
+            <div className="flex flex-col gap-2 mb-5">
+              {poiHistoryEntries.map(entry => (
+                <button
+                  key={entry.id}
+                  onClick={() => handleSelectEntryFlyTo(entry)}
+                  className="text-left bg-white rounded-2xl shadow-sm border border-pink-100 p-3.5 flex items-center gap-3 active:scale-[0.98] transition-transform"
+                >
+                  {entry.photos.length > 0
+                    ? <img src={entry.photos[0]} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                    : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin size={18} className="text-pink-400" />
+                      </div>
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
+                    <p className="text-xs text-gray-400">{entry.date}</p>
+                    {entry.rating ? (
+                      <p className="text-xs text-yellow-400">{'★'.repeat(entry.rating)}{'☆'.repeat(5 - entry.rating)}</p>
+                    ) : null}
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setSheet('form')}
+              className="w-full py-3.5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold shadow-md flex items-center justify-center gap-2 active:scale-95 transition-transform"
+            >
+              <PlusCircle size={18} /> 新しく記録する
+            </button>
+          </div>
         )}
       </BottomSheet>
     </div>

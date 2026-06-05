@@ -5,8 +5,10 @@ import {
   Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
-import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
+import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS, TAG_PRESET_COLORS } from '../settings'
+import { useGlobalTags } from '../store'
 import type { Entry } from '../types'
+import { getPositionCached } from '../utils/geoCache'
 
 type Props = {
   settings: AppSettings
@@ -29,14 +31,11 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-white mx-4 rounded-2xl border border-gray-100">
-      {/* No overflow-hidden — was clipping toggle shadows */}
       {children}
     </div>
   )
 }
 
-// Bug fix: Row is now a <div>, not a <button>, to avoid nested button HTML issues
-// onClick on the whole row only used when there's no interactive right content
 function Row({
   icon: Icon, label, sub, right, onRowClick, danger,
 }: {
@@ -117,6 +116,7 @@ function SegmentControl<T extends string>({ options, value, onChange }: {
 
 export function SettingsView({ settings, update, entries, onImport, onExport, onClearAll }: Props) {
   const importRef = useRef<HTMLInputElement>(null)
+  const { tags: globalTags } = useGlobalTags()
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -129,7 +129,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         if (imported.length === 0) { alert('有効なデータが見つかりませんでした'); return }
         if (confirm(`${imported.length} 件の記録をインポートしますか？\n既存データとマージされます。`)) {
           onImport(imported)
-          alert(`✅ ${imported.length} 件をインポートしました`)
+          alert(`${imported.length} 件をインポートしました`)
         }
       } catch { alert('ファイルの読み込みに失敗しました') }
     }
@@ -142,6 +142,17 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
   const totalPhotos = entries.reduce((s, e) => s + e.photos.length, 0)
   const storageKB = Math.round(JSON.stringify(entries).length / 1024)
   const displayName = settings.userName || 'ゲスト'
+
+  const setTagColor = (tag: string, color: string) => {
+    const existing = settings.tagColors[tag]
+    const next = { ...settings.tagColors }
+    if (existing === color) {
+      delete next[tag]   // toggle off
+    } else {
+      next[tag] = color
+    }
+    update({ tagColors: next })
+  }
 
   return (
     <div className="pb-10">
@@ -223,8 +234,8 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
           sub={`${settings.defaultLat.toFixed(3)}, ${settings.defaultLng.toFixed(3)}`}
           right={
             <button
-              onClick={() => navigator.geolocation.getCurrentPosition(
-                p => { update({ defaultLat: p.coords.latitude, defaultLng: p.coords.longitude }); alert('✅ 現在地を設定しました') },
+              onClick={() => getPositionCached(
+                (lat, lng) => { update({ defaultLat: lat, defaultLng: lng }); alert('現在地を設定しました') },
                 () => alert('位置情報の取得に失敗しました')
               )}
               className="text-xs text-pink-400 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 whitespace-nowrap"
@@ -250,6 +261,38 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         />
       </Card>
 
+      {/* Tag pin colors */}
+      {globalTags.length > 0 && (
+        <>
+          <SectionHeader icon={Tag} title="タグのピン色" />
+          <Card>
+            {globalTags.map((tag, i) => (
+              <div key={tag} className={`flex items-center gap-3 px-4 py-3 ${i < globalTags.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                <Tag size={14} className="text-purple-400 flex-shrink-0" />
+                <span className="text-sm text-gray-700 flex-1 truncate">#{tag}</span>
+                <div className="flex gap-1.5 flex-wrap justify-end">
+                  {TAG_PRESET_COLORS.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setTagColor(tag, color)}
+                      style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: color,
+                        border: settings.tagColors[tag] === color
+                          ? '3px solid #1f2937'
+                          : '2px solid transparent',
+                        outline: settings.tagColors[tag] === color ? '1px solid white' : 'none',
+                        outlineOffset: '-3px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </Card>
+        </>
+      )}
+
       {/* Data */}
       <SectionHeader icon={Database} title="データ管理" />
       <Card>
@@ -259,7 +302,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         <Row icon={HardDrive}  label="使用ストレージ"       sub={`約 ${storageKB} KB 使用中`} />
         <Row icon={Trash2}     label="全データを削除"       danger
           onRowClick={() => {
-            if (confirm('⚠️ すべての記録を削除しますか？\nこの操作は取り消せません。')) {
+            if (confirm('すべての記録を削除しますか？\nこの操作は取り消せません。')) {
               if (confirm('本当に削除しますか？')) onClearAll()
             }
           }}
@@ -292,7 +335,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
 
       <div className="text-center mt-6 mb-2">
         <p className="text-xs text-gray-400 font-medium">旅日記</p>
-        <p className="text-xs text-gray-300 mt-0.5">v1.8.1</p>
+        <p className="text-xs text-gray-300 mt-0.5">v{CHANGELOG[0].version}</p>
         <button
           onClick={() => { if (confirm('設定をリセットしますか？')) update({ ...DEFAULT_SETTINGS }) }}
           className="flex items-center gap-1.5 text-xs text-gray-300 mt-3 mx-auto"
