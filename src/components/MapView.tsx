@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Map, AdvancedMarker, Pin, InfoWindow, useMap, useMapsLibrary,
 } from '@vis.gl/react-google-maps'
-import { Utensils, MapPin, EyeOff, Coffee, Star } from 'lucide-react'
+import { Utensils, MapPin, EyeOff, Coffee, Star, Navigation2 } from 'lucide-react'
 import type { Entry } from '../types'
 import type { AppSettings } from '../settings'
 import { MAP_STYLES } from '../settings'
-import { setCachedGeo } from '../utils/geoCache'
+import { getCachedGeo, setCachedGeo } from '../utils/geoCache'
 
 type FoodPlace = { placeId: string; name: string; lat: number; lng: number; vicinity: string; rating?: number }
 type NativePoi  = { placeId: string; name: string; lat: number; lng: number; address: string }
@@ -28,9 +28,17 @@ type Props = {
   sheetOpen: boolean
 }
 
-function MapRefSetter({ mapRef }: { mapRef: Props['mapRef'] }) {
+/** Syncs the map instance to the parent ref AND applies one-time map options */
+function MapSetup({ mapRef }: { mapRef: Props['mapRef'] }) {
   const map = useMap()
-  useEffect(() => { mapRef.current = map; return () => { mapRef.current = null } }, [map, mapRef])
+  useEffect(() => {
+    mapRef.current = map
+    if (map) {
+      // Hide the keyboard shortcuts help button (not required by Google ToS)
+      map.setOptions({ keyboardShortcuts: false })
+    }
+    return () => { mapRef.current = null }
+  }, [map, mapRef])
   return null
 }
 
@@ -100,24 +108,53 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [foodPlaces, setFoodPlaces] = useState<FoodPlace[]>([])
   const [selectedFood, setSelectedFood] = useState<FoodPlace | null>(null)
   const [loadingFood, setLoadingFood] = useState(false)
-  const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null)
   const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
 
-  const placesService = useMemo(() => placesLib && map ? new placesLib.PlacesService(map) : null, [placesLib, map])
+  // Bug fix: don't call watchPosition on mount — that triggers iOS permission popup immediately.
+  // Instead, show blue dot from cache (no popup), and only start watching when user taps locate.
+  const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
+  const watchIdRef = useRef<number | null>(null)
 
+  // Cleanup watcher on unmount
   useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+      }
+    }
+  }, [])
+
+  const handleLocate = () => {
     if (!navigator.geolocation) return
-    const id = navigator.geolocation.watchPosition(
-      p => {
+    // Start watchPosition only when user explicitly taps locate
+    // (this triggers the iOS permission popup user-initiated — much better UX)
+    if (watchIdRef.current === null) {
+      const id = navigator.geolocation.watchPosition(
+        p => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+          setCurrentPos(pos)
+          setCachedGeo(pos.lat, pos.lng)
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000 },
+      )
+      watchIdRef.current = id
+    }
+    // Pan to current position
+    const cached = getCachedGeo()
+    if (cached) {
+      map?.panTo(cached)
+    } else {
+      navigator.geolocation.getCurrentPosition(p => {
         const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
         setCurrentPos(pos)
         setCachedGeo(pos.lat, pos.lng)
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 10000 },
-    )
-    return () => navigator.geolocation.clearWatch(id)
-  }, [])
+        map?.panTo(pos)
+      })
+    }
+  }
+
+  const placesService = useMemo(() => placesLib && map ? new placesLib.PlacesService(map) : null, [placesLib, map])
 
   const searchNearby = (type: 'restaurant' | 'cafe') => {
     if (foodMode === type) {
@@ -175,7 +212,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       mapTypeId={mapStyle.mapTypeId}
       mapId="DEMO_MAP_ID"
       disableDefaultUI={true}
-      zoomControl={true}
+      zoomControl={false}
       gestureHandling={sheetOpen ? 'none' : 'greedy'}
       className="w-full h-full"
       onClick={e => {
@@ -198,7 +235,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         }
       }}
     >
-      <MapRefSetter mapRef={mapRef} />
+      <MapSetup mapRef={mapRef} />
       <MapStylesController foodMode={foodMode} />
 
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
@@ -215,7 +252,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </AdvancedMarker>
       )}
 
-      {/* Diary pins — color driven by tag settings */}
+      {/* Diary pins */}
       {showDiaryPins && diaryEntries.map(entry => {
         const color = getEntryPinColor(entry, settings.tagColors)
         const border = darkenHex(color)
@@ -232,7 +269,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         )
       })}
 
-      {/* Want-to-visit pins — purple + star */}
+      {/* Want-to-visit pins */}
       {showDiaryPins && wishlistEntries.map(entry => (
         <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
           onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
@@ -287,7 +324,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </InfoWindow>
       )}
 
-      {/* Left overlay controls */}
+      {/* Left overlay controls — food/cafe + diary pin toggle */}
       <div style={{ position: 'absolute', bottom: 90, left: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 10 }}>
         <button onClick={() => searchNearby('restaurant')} style={fabStyle(foodMode === 'restaurant', '#ea580c')} title="レストラン">
           {loadingFood && foodMode === 'restaurant'
@@ -301,6 +338,10 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </button>
         <button onClick={() => setShowDiaryPins(v => !v)} style={fabStyle(false, '#ec4899')} title="記録ピン切替">
           {showDiaryPins ? <MapPin size={18} color="#ec4899" /> : <EyeOff size={18} color="#ec4899" />}
+        </button>
+        {/* Locate button — starts watchPosition only on user tap (avoids auto permission popup) */}
+        <button onClick={handleLocate} style={fabStyle(false, '#4285F4')} title="現在地">
+          <Navigation2 size={18} color="#4285F4" />
         </button>
       </div>
 

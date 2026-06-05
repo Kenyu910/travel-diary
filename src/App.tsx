@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { PlusCircle, Navigation2, Plus, MapPin, ChevronRight } from 'lucide-react'
+import { PlusCircle, Plus, MapPin, ChevronRight } from 'lucide-react'
 import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
@@ -131,13 +131,6 @@ function AppContent() {
     )
   }
 
-  const handleLocate = () => {
-    getPositionCached(
-      (lat, lng) => mapRef.current?.panTo({ lat, lng }),
-      () => alert('位置情報を取得できませんでした。')
-    )
-  }
-
   const handleSelectEntry = (entry: Entry) => {
     setSelectedEntry(entry)
     setSheet('detail')
@@ -208,9 +201,6 @@ function AppContent() {
     list: '日記', calendar: '日程', tags: 'タグ', settings: '設定',
   }
 
-  // Nav height for bottom padding: 56px + safe area
-  const navPb = 'calc(env(safe-area-inset-bottom, 0px) + 64px)'
-
   return (
     <div className="flex flex-col h-dvh bg-[#fdf6fb]">
       {/* Map layer — always mounted, invisible when non-map tab */}
@@ -251,15 +241,11 @@ function AppContent() {
               </div>
             )}
 
-            {/* FABs */}
-            <div className="absolute bottom-14 right-4 z-10 flex flex-col gap-2">
+            {/* Quick-add FAB (locate is now inside MapView controls) */}
+            <div className="absolute bottom-14 right-4 z-10">
               <button onClick={handleQuickAdd}
                 className="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform">
                 <PlusCircle size={22} className="text-white" />
-              </button>
-              <button onClick={handleLocate}
-                className="w-12 h-12 bg-white rounded-full shadow-md border border-gray-200 flex items-center justify-center active:scale-95 transition-transform">
-                <Navigation2 size={20} className="text-pink-400" />
               </button>
             </div>
           </>
@@ -282,8 +268,7 @@ function AppContent() {
             )}
           </div>
 
-          {/* Add paddingBottom so content doesn't hide behind fixed nav */}
-          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'hidden', scrollbarGutter: 'stable', paddingBottom: navPb }}>
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'hidden', scrollbarGutter: 'stable' }}>
             {tab === 'list' && (
               <DiaryList entries={entries} filterTag={filterTag}
                 onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
@@ -311,7 +296,9 @@ function AppContent() {
         </div>
       )}
 
-      {/* Fixed BottomNav (position:fixed in component) — no flex spacer needed */}
+      {/* Flex spacer for map tab (non-map tabs use flex-1 content div) */}
+      {tab === 'map' && <div className="flex-1" />}
+
       <BottomNav active={tab} onChange={handleTabChange} entryCount={entries.length} />
 
       <BottomSheet open={sheet !== null} onClose={closeSheet} title={sheetTitle}>

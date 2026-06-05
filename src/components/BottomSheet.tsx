@@ -56,9 +56,9 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
 
   return (
     <>
-      {/* Backdrop — z-30 to cover fixed BottomNav (z-20) */}
+      {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/25 z-30 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/25 z-20 transition-opacity duration-300 ${
           open ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -73,7 +73,7 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
           ...sheetStyle,
           height: '92vh',
         }}
-        className={`fixed left-0 right-0 bottom-0 z-40 bg-white rounded-t-3xl shadow-2xl
+        className={`fixed left-0 right-0 bottom-0 z-30 bg-white rounded-t-3xl shadow-2xl
           flex flex-col
           transition-transform duration-300 ease-out
           ${open ? 'translate-y-0' : 'translate-y-full'}

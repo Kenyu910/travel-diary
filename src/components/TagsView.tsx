@@ -155,18 +155,18 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry, tagCo
                   <div key={tag} className={`${i < globalTags.length - 1 ? 'border-b border-gray-50' : ''}`}>
                     {/* Main row */}
                     <div className="flex items-center gap-1.5 px-3 py-2.5">
-                      {/* Color dot — tap to open color picker */}
+                      {/* Tag icon (付箋マーク) — tap to open color picker */}
                       <button
-                        onClick={() => setShowColorFor(isShowingColor ? null : tag)}
-                        style={{
-                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                          background: currentColor || '#e5e7eb',
-                          border: isShowingColor ? '2px solid #6d28d9' : '2px solid transparent',
-                          outline: isShowingColor ? '1px solid white' : 'none',
-                          outlineOffset: '-2px',
-                        }}
+                        onClick={() => !isEditing && setShowColorFor(isShowingColor ? null : tag)}
+                        className={`flex-shrink-0 transition-colors ${isShowingColor ? 'text-purple-500' : 'text-gray-300 active:text-purple-400'}`}
                         title="ピンの色を設定"
-                      />
+                      >
+                        <Tag
+                          size={16}
+                          style={currentColor ? { color: currentColor } : {}}
+                          fill={currentColor || 'none'}
+                        />
+                      </button>
 
                       {isEditing ? (
                         <input
