@@ -28,3 +28,12 @@ input, textarea, select {
 /* Leaflet z-index fix */
 .leaflet-container { z-index: 0; }
 .leaflet-control   { z-index: 10 !important; }
+
+/* Google Maps: hide keyboard shortcuts help link (not required by ToS) */
+/* This is a CSS backup — map.setOptions({ keyboardShortcuts: false }) is the primary method */
+.gm-style .gm-style-cc button,
+.gm-style-cc > div > button { display: none !important; }
+
+/* Google Maps: hide the feedback / report button */
+.gm-svpc { display: none !important; }
+button[title="地図を表示する"] { display: none !important; }

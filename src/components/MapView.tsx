@@ -214,6 +214,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       disableDefaultUI={true}
       zoomControl={false}
       gestureHandling={sheetOpen ? 'none' : 'greedy'}
+      // Hide keyboard shortcuts help link (also set via map.setOptions in MapSetup)
+      {...({ keyboardShortcuts: false } as any)}
       className="w-full h-full"
       onClick={e => {
         const lat = e.detail.latLng?.lat

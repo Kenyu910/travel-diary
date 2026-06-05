@@ -15,7 +15,7 @@ import { EntryDetail } from './components/EntryDetail'
 import { SettingsView } from './components/SettingsView'
 import { useEntries } from './store'
 import { useSettings } from './settings'
-import { getPositionCached } from './utils/geoCache'
+import { getPositionCached, getCachedGeo } from './utils/geoCache'
 import type { Entry } from './types'
 
 type Sheet = 'form' | 'detail' | 'edit' | 'poi-history' | null
@@ -149,12 +149,13 @@ function AppContent() {
     setClickedPlaceName('')
     setSelectedEntry(null)
     setSheet('form')
-    getPositionCached(
-      (lat, lng) => {
-        setClickedPos({ lat, lng })
-        reverseGeocode(lat, lng, name => setClickedPlaceName(name))
-      },
-    )
+    // Use only cached position — don't trigger GPS permission popup
+    // (user can get GPS via the locate button in the map)
+    const cached = getCachedGeo()
+    if (cached) {
+      setClickedPos({ lat: cached.lat, lng: cached.lng })
+      reverseGeocode(cached.lat, cached.lng, name => setClickedPlaceName(name))
+    }
   }
 
   const handleSave = (entry: Entry) => {
@@ -202,7 +203,9 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-[#fdf6fb]">
+    // position:relative is CRITICAL — without it, the absolute map layer positions
+    // relative to the viewport (not this container), causing a large gap.
+    <div className="relative flex flex-col h-dvh bg-[#fdf6fb]">
       {/* Map layer — always mounted, invisible when non-map tab */}
       <div className={`absolute inset-0 bottom-[calc(env(safe-area-inset-bottom,0px)+56px)] ${tab !== 'map' ? 'invisible' : ''}`}>
         <MapErrorBoundary>
