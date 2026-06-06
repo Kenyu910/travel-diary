@@ -2,9 +2,6 @@
  * Compress an image file to JPEG before storing in localStorage.
  * Without compression, large photos can freeze the main thread
  * and quickly exhaust the ~5MB localStorage limit.
- *
- * Uses requestIdleCallback to defer expensive toDataURL operation,
- * preventing UI freeze on high-latency devices.
  */
 export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -43,31 +40,26 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
 
           ctx.drawImage(img, 0, 0, width, height)
 
-          // Defer toDataURL to idle time to avoid UI freeze
-          // Use requestIdleCallback if available, fallback to setTimeout
-          const scheduleConversion = () => {
-            if ('requestIdleCallback' in window) {
-              requestIdleCallback(() => {
-                try {
-                  resolve(canvas.toDataURL('image/jpeg', quality))
-                } catch (e) {
-                  reject(e)
-                }
-              }, { timeout: 5000 })
-            } else {
-              // Fallback for browsers without requestIdleCallback
-              setTimeout(() => {
-                try {
-                  resolve(canvas.toDataURL('image/jpeg', quality))
-                } catch (e) {
-                  reject(e)
-                }
-              }, 0)
-            }
+          // Use requestIdleCallback with short timeout for non-blocking conversion
+          // Fallback to immediate timeout for better browser compatibility
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => {
+              try {
+                resolve(canvas.toDataURL('image/jpeg', quality))
+              } catch (e) {
+                reject(e)
+              }
+            }, { timeout: 1000 })
+          } else {
+            // Fast fallback for Safari and older browsers
+            setTimeout(() => {
+              try {
+                resolve(canvas.toDataURL('image/jpeg', quality))
+              } catch (e) {
+                reject(e)
+              }
+            }, 10)
           }
-
-          // Schedule on next animation frame first, then idle
-          requestAnimationFrame(scheduleConversion)
         } catch (e) {
           reject(e)
         }
@@ -76,7 +68,6 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
       img.src = ev.target!.result as string
     }
 
-    reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'))
     reader.readAsDataURL(file)
   })
 }
