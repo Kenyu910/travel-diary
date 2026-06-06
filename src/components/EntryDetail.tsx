@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Share2, MapPin, Calendar, Tag } from 'lucide-react'
+import { Pencil, Trash2, Share2, MapPin, Calendar, Tag, ExternalLink } from 'lucide-react'
 import { Lightbox } from './Lightbox'
 import { StarRating } from './StarRating'
 import type { Entry } from '../types'
@@ -103,17 +103,27 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo }: Pr
           </div>
         )}
 
-        {/* Tappable location → fly to map */}
-        <button
-          onClick={() => onFlyTo?.(entry.lat, entry.lng)}
-          className="flex items-center justify-center gap-1.5 mx-auto mt-1 px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100 active:bg-gray-100"
-        >
-          <MapPin size={13} className="text-pink-400" />
-          <span className="text-xs text-gray-400">
-            {entry.lat.toFixed(4)}, {entry.lng.toFixed(4)}
-          </span>
-          <span className="text-xs text-pink-400 font-medium">マップで見る</span>
-        </button>
+        {/* Location buttons */}
+        <div className="flex gap-2 mt-1">
+          <button
+            onClick={() => onFlyTo?.(entry.lat, entry.lng)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-gray-50 border border-gray-100 active:bg-gray-100"
+          >
+            <MapPin size={13} className="text-pink-400" />
+            <span className="text-xs text-pink-400 font-medium">アプリ内マップ</span>
+          </button>
+          <button
+            onClick={() => {
+              const name = entry.placeName || entry.title
+              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}@${entry.lat},${entry.lng}`
+              window.open(url, '_blank')
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-blue-50 border border-blue-100 active:bg-blue-100"
+          >
+            <ExternalLink size={13} className="text-blue-400" />
+            <span className="text-xs text-blue-500 font-medium">Google Maps</span>
+          </button>
+        </div>
       </div>
 
       {lightboxIndex !== null && (

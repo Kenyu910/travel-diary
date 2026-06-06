@@ -96,10 +96,25 @@ function CurrentLocationDot({ lat, lng }: { lat: number; lng: number }) {
   )
 }
 
-function openInGoogleMaps(lat: number, lng: number, placeId?: string) {
-  const url = placeId
-    ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
-    : `https://www.google.com/maps/@${lat},${lng},17z`
+/**
+ * Open Google Maps at the given location.
+ * Uses the Maps URL API format which works reliably on iOS (native Google Maps app).
+ * The old @lat,lng,17z format causes "search not found" on mobile.
+ */
+function openInGoogleMaps(lat: number, lng: number, name?: string, placeId?: string) {
+  let url: string
+  if (placeId && name) {
+    // With place ID + name: most reliable, shows the correct POI
+    url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${placeId}`
+  } else if (placeId) {
+    url = `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}`
+  } else if (name) {
+    // Coordinates + name: shows a labeled pin at the location
+    url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}@${lat},${lng}`
+  } else {
+    // Coordinates only
+    url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+  }
   window.open(url, '_blank')
 }
 
@@ -297,17 +312,39 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       {showDiaryPins && diaryEntries.map(entry => {
         const color = getEntryPinColor(entry, settings.tagColors)
         const border = darkenHex(color)
+        // Count how many entries are at this location (for multi-visit badge)
+        const sameLocationCount = diaryEntries.filter(e =>
+          Math.abs(e.lat - entry.lat) < NEARBY_M && Math.abs(e.lng - entry.lng) < NEARBY_M
+        ).length
         return (
           <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
-            onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
-            <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
+            onClick={() => {
+              setSelectedFood(null); setNativePoi(null); onClearSearchPin()
+              // Bug fix: pink pin tap → show history (same as POI tap)
+              // onPoiClick triggers openFormOrHistory in App.tsx which shows history sheet
+              onPoiClick(entry.lat, entry.lng, entry.placeName || entry.title)
+            }}>
+            {sameLocationCount > 1 ? (
+              // Multiple visits badge on the pin
+              <div style={{ position: 'relative' }}>
+                <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
+                <div style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                  {sameLocationCount}
+                </div>
+              </div>
+            ) : (
+              <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
+            )}
           </AdvancedMarker>
         )
       })}
 
       {showDiaryPins && wishlistEntries.map(entry => (
         <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
-          onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
+          onClick={() => {
+            // Wishlist pins: show the entry detail directly (not history)
+            setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry)
+          }}>
           <Pin background="#7c3aed" borderColor="#6d28d9" glyphColor="white" glyph={<Star size={10} fill="white" color="white" />} />
         </AdvancedMarker>
       ))}
@@ -352,7 +389,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             <p style={{ fontSize: 11, color: '#6b7280' }}>{selectedFood.vicinity}</p>
             {selectedFood.rating && <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>★ {selectedFood.rating}</p>}
             <InfoBtn label="日記を書く" bg="#ec4899" color="white" onClick={() => { setSelectedFood(null); onPoiClick(selectedFood.lat, selectedFood.lng, selectedFood.name) }} />
-            <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(selectedFood.lat, selectedFood.lng, selectedFood.placeId)} />
+            <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(selectedFood.lat, selectedFood.lng, selectedFood.name, selectedFood.placeId)} />
           </div>
         </InfoWindow>
       )}
@@ -364,7 +401,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             <p style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{nativePoi.name}</p>
             {nativePoi.address && <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{nativePoi.address}</p>}
             <InfoBtn label="日記を書く" bg="#ec4899" color="white" onClick={() => { setNativePoi(null); onPoiClick(nativePoi.lat, nativePoi.lng, nativePoi.name) }} />
-            <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(nativePoi.lat, nativePoi.lng, nativePoi.placeId)} />
+            <InfoBtn label="Google Mapsで見る" bg="#f9fafb" color="#4285F4" onClick={() => openInGoogleMaps(nativePoi.lat, nativePoi.lng, nativePoi.name, nativePoi.placeId)} />
           </div>
         </InfoWindow>
       )}
