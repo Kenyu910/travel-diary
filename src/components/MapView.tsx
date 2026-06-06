@@ -42,51 +42,18 @@ function MapSetup({ mapRef }: { mapRef: Props['mapRef'] }) {
   return null
 }
 
-const FOOD_MODE_MAP_TYPE = '__food_mode_no_poi__'
-
-/** POI style rules — hides all Google Maps default POIs (hospitals, shops, etc.) */
-const NO_POI_STYLES = [
-  { featureType: 'poi',     elementType: 'all',      stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', elementType: 'all',      stylers: [{ visibility: 'off' }] },
-  // Keep road/park geometry visible for navigation
-  { featureType: 'road',    elementType: 'geometry', stylers: [{ visibility: 'on'  }] },
-  { featureType: 'road',    elementType: 'labels',   stylers: [{ visibility: 'on'  }] },
-]
-
 /**
- * Hides Google Maps default POI markers (hospitals, shops, etc.) when food mode is ON.
- *
- * Root cause of previous failure:
- *   mapId="DEMO_MAP_ID" → vector rendering → map.setOptions({ styles }) is silently ignored.
- *
- * Fix: Use StyledMapType which creates a custom RASTER map type with the POI-hiding
- * styles baked in. Switching to this custom type works even when DEMO_MAP_ID is set,
- * because StyledMapType operates independently of the mapId cloud styling pipeline.
+ * Keeps the base map type regardless of food mode.
+ * Food mode shows search results without hiding Google Maps default POIs.
  */
-function MapStylesController({ foodMode, baseMapTypeId }: { foodMode: string; baseMapTypeId: string }) {
+function MapStylesController({ baseMapTypeId }: { baseMapTypeId: string }) {
   const map = useMap()
-  const registeredRef = useRef(false)
 
   useEffect(() => {
     if (!map) return
-    const win = window as any
-    const G = win.google?.maps
-    if (!G?.StyledMapType) return
-
-    // Register the custom map type once
-    if (!registeredRef.current) {
-      const noPoiType = new G.StyledMapType(NO_POI_STYLES, { name: 'Food Mode' })
-      map.mapTypes.set(FOOD_MODE_MAP_TYPE, noPoiType)
-      registeredRef.current = true
-    }
-
-    if (foodMode !== 'none') {
-      map.setMapTypeId(FOOD_MODE_MAP_TYPE)
-    } else {
-      // Restore the base map type (roadmap / satellite / terrain)
-      map.setMapTypeId(baseMapTypeId)
-    }
-  }, [map, foodMode, baseMapTypeId])
+    // Always use the base map type (don't hide POIs during food mode)
+    map.setMapTypeId(baseMapTypeId)
+  }, [map, baseMapTypeId])
 
   return null
 }
@@ -303,7 +270,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       }}
     >
       <MapSetup mapRef={mapRef} />
-      <MapStylesController foodMode={foodMode} baseMapTypeId={mapStyle.mapTypeId} />
+      <MapStylesController baseMapTypeId={mapStyle.mapTypeId} />
 
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
 
