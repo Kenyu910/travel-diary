@@ -15,6 +15,7 @@ export type AppSettings = {
   defaultSort: SortOrder
   showHint: boolean
   tagColors: Record<string, string>   // tag name → hex color
+  useDefaultLocation: boolean  // whether to use defaultLat/defaultLng or current location
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultSort: 'newest',
   showHint: true,
   tagColors: {},
+  useDefaultLocation: true,
 }
 
 const KEY = 'travel-diary-settings'

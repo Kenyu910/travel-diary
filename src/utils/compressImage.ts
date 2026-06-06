@@ -3,7 +3,7 @@
  * Without compression, large photos can freeze the main thread
  * and quickly exhaust the ~5MB localStorage limit.
  */
-export function compressImage(file: File, maxWidth = 1200, quality = 0.75): Promise<string> {
+export function compressImage(file: File, maxWidth = 800, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -33,7 +33,14 @@ export function compressImage(file: File, maxWidth = 1200, quality = 0.75): Prom
         ctx.drawImage(img, 0, 0, width, height)
 
         // Use JPEG for photos (much smaller than PNG)
-        resolve(canvas.toDataURL('image/jpeg', quality))
+        // Defer to next frame to avoid UI freeze
+        requestAnimationFrame(() => {
+          try {
+            resolve(canvas.toDataURL('image/jpeg', quality))
+          } catch (e) {
+            reject(e)
+          }
+        })
       }
 
       img.src = ev.target!.result as string

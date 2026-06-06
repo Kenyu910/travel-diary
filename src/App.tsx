@@ -125,7 +125,17 @@ function AppContent() {
     // Bug fix: open form IMMEDIATELY with cached/default position
     // Don't wait for GPS — that blocks the form from appearing
     const cached = getCachedGeo()
-    const pos = cached ?? { lat: settings.defaultLat, lng: settings.defaultLng }
+    let pos: { lat: number; lng: number }
+
+    if (cached) {
+      pos = cached
+    } else if (settings.useDefaultLocation) {
+      pos = { lat: settings.defaultLat, lng: settings.defaultLng }
+    } else {
+      // When default location is disabled and no cache, try to get current location
+      pos = { lat: 35.6762, lng: 139.6503 } // fallback to Tokyo
+    }
+
     setClickedPos(pos)
     setClickedPlaceName('')
     setSelectedEntry(null)
@@ -149,7 +159,15 @@ function AppContent() {
   }
 
   const openNewEntry = (_date?: string) => {
-    setClickedPos({ lat: settings.defaultLat, lng: settings.defaultLng })
+    let initialPos: { lat: number; lng: number }
+
+    if (settings.useDefaultLocation) {
+      initialPos = { lat: settings.defaultLat, lng: settings.defaultLng }
+    } else {
+      initialPos = { lat: 35.6762, lng: 139.6503 } // fallback to Tokyo
+    }
+
+    setClickedPos(initialPos)
     setClickedPlaceName('')
     setSelectedEntry(null)
     setSheet('form')

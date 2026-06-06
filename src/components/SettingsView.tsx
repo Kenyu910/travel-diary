@@ -216,21 +216,27 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
             }))}
             value={settings.mapStyle} onChange={v => update({ mapStyle: v })} />}
         />
-        <Row
-          icon={LocateFixed} label="デフォルト表示位置"
-          sub={`${settings.defaultLat.toFixed(3)}, ${settings.defaultLng.toFixed(3)}`}
-          right={
-            <button
-              onClick={() => getPositionCached(
-                (lat, lng) => { update({ defaultLat: lat, defaultLng: lng }); alert('現在地を設定しました') },
-                () => alert('位置情報の取得に失敗しました')
-              )}
-              className="text-xs text-pink-400 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 whitespace-nowrap"
-            >
-              現在地に設定
-            </button>
-          }
+        <Row icon={LocateFixed} label="デフォルト位置を使用"
+          sub={settings.useDefaultLocation ? `${settings.defaultLat.toFixed(3)}, ${settings.defaultLng.toFixed(3)}` : 'オフ（現在地を使用）'}
+          right={<Toggle value={settings.useDefaultLocation} onChange={v => update({ useDefaultLocation: v })} />}
         />
+        {settings.useDefaultLocation && (
+          <Row
+            icon={LocateFixed} label="デフォルト位置"
+            sub={`${settings.defaultLat.toFixed(3)}, ${settings.defaultLng.toFixed(3)}`}
+            right={
+              <button
+                onClick={() => getPositionCached(
+                  (lat, lng) => { update({ defaultLat: lat, defaultLng: lng }); alert('現在地を設定しました') },
+                  () => alert('位置情報の取得に失敗しました')
+                )}
+                className="text-xs text-pink-400 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 whitespace-nowrap"
+              >
+                現在地に設定
+              </button>
+            }
+          />
+        )}
         <Row icon={ZoomIn} label="デフォルトズーム"
           right={
             <div className="flex items-center gap-2">

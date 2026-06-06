@@ -161,7 +161,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const placesLib = useMapsLibrary('places')
   const mapStyle = MAP_STYLES[settings.mapStyle]
 
-  const [showDiaryPins, setShowDiaryPins] = useState(true)
+  const [userShowDiaryPins, setUserShowDiaryPins] = useState(true)
   const [foodMode, setFoodMode] = useState<'none' | 'restaurant' | 'cafe'>('none')
   const [foodPlaces, setFoodPlaces] = useState<FoodPlace[]>([])
   const [selectedFood, setSelectedFood] = useState<FoodPlace | null>(null)
@@ -169,6 +169,9 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
   const watchIdRef = useRef<number | null>(null)
+
+  // Only show diary pins if: food mode is OFF AND user hasn't manually hidden them
+  const showDiaryPins = foodMode === 'none' && userShowDiaryPins
 
   useEffect(() => {
     return () => {
@@ -201,11 +204,10 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
 
   const searchNearby = (type: 'restaurant' | 'cafe') => {
     if (foodMode === type) {
-      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); setShowDiaryPins(true); return
+      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); return
     }
     if (!placesService || !map) return
     setFoodMode(type); setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null)
-    setShowDiaryPins(false)
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }
     placesService.nearbySearch(
@@ -425,8 +427,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             ? <div style={{ width: 18, height: 18, border: '2px solid #7c3aed', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
             : <Coffee size={18} color={foodMode === 'cafe' ? 'white' : '#7c3aed'} />}
         </button>
-        <button onClick={() => setShowDiaryPins(v => !v)} style={fabStyle(false, '#ec4899')} title="記録ピン切替">
-          {showDiaryPins ? <MapPin size={18} color="#ec4899" /> : <EyeOff size={18} color="#ec4899" />}
+        <button onClick={() => setUserShowDiaryPins(v => !v)} style={fabStyle(false, '#ec4899')} title="記録ピン切替">
+          {userShowDiaryPins ? <MapPin size={18} color="#ec4899" /> : <EyeOff size={18} color="#ec4899" />}
         </button>
         <button onClick={handleLocate} style={fabStyle(false, '#4285F4')} title="現在地">
           <Navigation2 size={18} color="#4285F4" />
