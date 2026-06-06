@@ -26,8 +26,8 @@ const SHEET_TITLES: Record<NonNullable<Sheet>, string> = {
   form: '新しい記録', edit: '記録を編集', detail: '', 'poi-history': '過去の記録',
 }
 
-/** Check if two coordinates are within ~100m of each other */
-const NEARBY_THRESHOLD = 0.001
+/** Check if two coordinates are within ~33m of each other (same building/restaurant) */
+const NEARBY_THRESHOLD = 0.0003
 function findNearbyEntries(entries: Entry[], lat: number, lng: number): Entry[] {
   return entries.filter(e =>
     !e.wantToVisit &&

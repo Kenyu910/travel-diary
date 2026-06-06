@@ -12,7 +12,9 @@ type FoodPlace = { placeId: string; name: string; lat: number; lng: number; vici
 type NativePoi  = { placeId: string; name: string; lat: number; lng: number; address: string }
 type SearchPin  = { lat: number; lng: number; name: string }
 
-const NEARBY_M = 0.001  // ~111m in lat/lng degrees
+// ~33m threshold — tight enough to match "same building/restaurant" but won't
+// accidentally catch other places 50m+ away on the same block.
+const NEARBY_M = 0.0003
 
 type Props = {
   entries: Entry[]
@@ -40,47 +42,52 @@ function MapSetup({ mapRef }: { mapRef: Props['mapRef'] }) {
   return null
 }
 
+const FOOD_MODE_MAP_TYPE = '__food_mode_no_poi__'
+
+/** POI style rules — hides all Google Maps default POIs (hospitals, shops, etc.) */
+const NO_POI_STYLES = [
+  { featureType: 'poi',     elementType: 'all',      stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', elementType: 'all',      stylers: [{ visibility: 'off' }] },
+  // Keep road/park geometry visible for navigation
+  { featureType: 'road',    elementType: 'geometry', stylers: [{ visibility: 'on'  }] },
+  { featureType: 'road',    elementType: 'labels',   stylers: [{ visibility: 'on'  }] },
+]
+
 /**
- * Hides Google Maps default POI icons/labels when food/cafe mode is active.
+ * Hides Google Maps default POI markers (hospitals, shops, etc.) when food mode is ON.
  *
- * IMPORTANT: mapId="DEMO_MAP_ID" switches Google Maps to vector rendering,
- * which IGNORES map.setOptions({ styles: [...] }) — this is a Google Maps API
- * design limitation (styles and mapId are mutually exclusive).
+ * Root cause of previous failure:
+ *   mapId="DEMO_MAP_ID" → vector rendering → map.setOptions({ styles }) is silently ignored.
  *
- * Workaround: try the FeatureLayer API (available in vector maps), which CAN
- * hide POI feature layers even when using a mapId.
+ * Fix: Use StyledMapType which creates a custom RASTER map type with the POI-hiding
+ * styles baked in. Switching to this custom type works even when DEMO_MAP_ID is set,
+ * because StyledMapType operates independently of the mapId cloud styling pipeline.
  */
-function MapStylesController({ foodMode }: { foodMode: string }) {
+function MapStylesController({ foodMode, baseMapTypeId }: { foodMode: string; baseMapTypeId: string }) {
   const map = useMap()
+  const registeredRef = useRef(false)
+
   useEffect(() => {
     if (!map) return
+    const win = window as any
+    const G = win.google?.maps
+    if (!G?.StyledMapType) return
 
-    // --- Approach 1: FeatureLayer API (vector maps / mapId) ---
-    // FeatureLayer works with mapId where traditional styles don't.
-    try {
-      const win = window as any
-      const FeatureType = win.google?.maps?.FeatureType
-      if (FeatureType && typeof (map as any).getFeatureLayer === 'function') {
-        const poiLayer = (map as any).getFeatureLayer('POINT_OF_INTEREST')
-        if (poiLayer) {
-          // style = null → uses default (shows POIs); empty function → hides all
-          poiLayer.style = foodMode !== 'none'
-            ? () => null   // returning null for each feature = don't draw it
-            : null         // null on the layer itself = revert to default map style
-          return
-        }
-      }
-    } catch { /* FeatureLayer not available on this map type */ }
+    // Register the custom map type once
+    if (!registeredRef.current) {
+      const noPoiType = new G.StyledMapType(NO_POI_STYLES, { name: 'Food Mode' })
+      map.mapTypes.set(FOOD_MODE_MAP_TYPE, noPoiType)
+      registeredRef.current = true
+    }
 
-    // --- Approach 2: Traditional styles fallback (only works WITHOUT mapId) ---
-    map.setOptions({
-      styles: foodMode !== 'none' ? [
-        { featureType: 'poi',          elementType: 'all',    stylers: [{ visibility: 'off' }] },
-        { featureType: 'transit',      elementType: 'all',    stylers: [{ visibility: 'off' }] },
-        { featureType: 'poi.park',     elementType: 'geometry', stylers: [{ visibility: 'on' }] },
-      ] : [],
-    })
-  }, [map, foodMode])
+    if (foodMode !== 'none') {
+      map.setMapTypeId(FOOD_MODE_MAP_TYPE)
+    } else {
+      // Restore the base map type (roadmap / satellite / terrain)
+      map.setMapTypeId(baseMapTypeId)
+    }
+  }, [map, foodMode, baseMapTypeId])
+
   return null
 }
 
@@ -294,7 +301,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       }}
     >
       <MapSetup mapRef={mapRef} />
-      <MapStylesController foodMode={foodMode} />
+      <MapStylesController foodMode={foodMode} baseMapTypeId={mapStyle.mapTypeId} />
 
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
 
