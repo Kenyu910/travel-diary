@@ -82,15 +82,27 @@ function AppContent() {
     setTab(t)
   }
 
+  /** Open form or history sheet, depending on whether there are nearby diary entries */
+  const openFormOrHistory = useCallback((lat: number, lng: number, name: string) => {
+    setClickedPos({ lat, lng })
+    setClickedPlaceName(name)
+    setSelectedEntry(null)
+    const nearby = findNearbyEntries(entries, lat, lng)
+    if (nearby.length > 0) {
+      setPoiHistoryEntries(nearby)
+      setSheet('poi-history')
+    } else {
+      setSheet('form')
+    }
+  }, [entries])
+
   const handleMapClick = useCallback((lat: number, lng: number) => {
     if (sheetRef.current !== null) return
     setSearchPin(null)
-    setClickedPos({ lat, lng })
-    setClickedPlaceName('')
-    setSelectedEntry(null)
-    setSheet('form')
+    // Immediately open with empty name, then update via reverse geocode
+    openFormOrHistory(lat, lng, '')
     reverseGeocode(lat, lng, name => setClickedPlaceName(name))
-  }, [reverseGeocode])
+  }, [reverseGeocode, openFormOrHistory])
 
   const handlePlaceSelected = useCallback((lat: number, lng: number, name: string) => {
     setSearchPin({ lat, lng, name })
@@ -100,26 +112,14 @@ function AppContent() {
 
   const handleSearchPinClick = useCallback(() => {
     if (!searchPin) return
-    setClickedPos({ lat: searchPin.lat, lng: searchPin.lng })
-    setClickedPlaceName(searchPin.name)
-    setSelectedEntry(null)
-    setSheet('form')
+    // Search pin click also checks for existing history
+    openFormOrHistory(searchPin.lat, searchPin.lng, searchPin.name)
     setSearchPin(null)
-  }, [searchPin])
+  }, [searchPin, openFormOrHistory])
 
   const handlePoiClick = useCallback((lat: number, lng: number, name: string) => {
-    setClickedPos({ lat, lng })
-    setClickedPlaceName(name)
-    setSelectedEntry(null)
-    // Check if we have history at this location
-    const nearby = findNearbyEntries(entries, lat, lng)
-    if (nearby.length > 0) {
-      setPoiHistoryEntries(nearby)
-      setSheet('poi-history')
-    } else {
-      setSheet('form')
-    }
-  }, [entries])
+    openFormOrHistory(lat, lng, name)
+  }, [openFormOrHistory])
 
   const handleQuickAdd = () => {
     // Bug fix: open form IMMEDIATELY with cached/default position
