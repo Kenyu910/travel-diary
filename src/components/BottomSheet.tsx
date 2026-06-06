@@ -81,7 +81,8 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
       >
           {/* Drag handle — touch here to swipe close */}
           <div
-            className="flex-shrink-0 flex items-center justify-between px-5 pt-3 pb-2 cursor-grab active:cursor-grabbing"
+            className="flex-shrink-0 flex items-center justify-between px-5 pb-2 cursor-grab active:cursor-grabbing"
+            style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
             onTouchStart={handleHandleTouchStart}
             onTouchMove={handleHandleTouchMove}
             onTouchEnd={handleHandleTouchEnd}
@@ -92,7 +93,7 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200"
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 flex-shrink-0"
             >
               <X size={15} />
             </button>

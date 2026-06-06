@@ -11,6 +11,24 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
       return
     }
 
+    // Check if file is HEIC/HEIF format (unsupported by canvas)
+    // These formats need special handling
+    const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || file.name.endsWith('.heic') || file.name.endsWith('.heif')
+    if (isHeic) {
+      // For HEIC, we can't process it directly. Try to use the file as-is
+      // Most modern browsers can display HEIC but canvas.drawImage may fail
+      // Fallback: convert by using blob URL directly
+      try {
+        const blobUrl = URL.createObjectURL(file)
+        resolve(blobUrl)
+        // Note: This returns a blob URL instead of data URL, which is more efficient for HEIC
+        return
+      } catch (e) {
+        reject(new Error('HEIC 形式の処理に失敗しました。別の形式で試してください。'))
+        return
+      }
+    }
+
     const reader = new FileReader()
 
     reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'))
