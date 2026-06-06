@@ -170,8 +170,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
   const watchIdRef = useRef<number | null>(null)
 
-  // Only show diary pins if: food mode is OFF AND user hasn't manually hidden them
-  const showDiaryPins = foodMode === 'none' && userShowDiaryPins
+  // Show diary pins when user hasn't manually hidden them (independent of food mode)
+  const showDiaryPins = userShowDiaryPins
 
   useEffect(() => {
     return () => {
