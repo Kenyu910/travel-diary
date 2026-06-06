@@ -120,10 +120,13 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
     e.target.value = ''
     setCompressing(true)
     try {
+      const compressed: string[] = []
       for (const file of files) {
-        const compressed = await compressImage(file)
-        setPhotos(prev => [...prev, compressed])
+        const result = await compressImage(file)
+        compressed.push(result)
       }
+      // Batch update: only call setPhotos once after all files are processed
+      setPhotos(prev => [...prev, ...compressed])
     } catch {
       alert('写真の処理に失敗しました。')
     } finally {
