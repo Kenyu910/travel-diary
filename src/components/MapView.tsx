@@ -12,6 +12,8 @@ type FoodPlace = { placeId: string; name: string; lat: number; lng: number; vici
 type NativePoi  = { placeId: string; name: string; lat: number; lng: number; address: string }
 type SearchPin  = { lat: number; lng: number; name: string }
 
+const NEARBY_M = 0.001  // ~111m in lat/lng degrees
+
 type Props = {
   entries: Entry[]
   selectedEntryId: string | null
@@ -28,29 +30,54 @@ type Props = {
   sheetOpen: boolean
 }
 
-/** Syncs the map instance to the parent ref AND applies one-time map options */
 function MapSetup({ mapRef }: { mapRef: Props['mapRef'] }) {
   const map = useMap()
   useEffect(() => {
     mapRef.current = map
-    if (map) {
-      // Hide the keyboard shortcuts help button (not required by Google ToS)
-      map.setOptions({ keyboardShortcuts: false })
-    }
+    if (map) map.setOptions({ keyboardShortcuts: false })
     return () => { mapRef.current = null }
   }, [map, mapRef])
   return null
 }
 
-/** Hides Google Maps default POI labels when food/cafe mode is active */
+/**
+ * Hides Google Maps default POI icons/labels when food/cafe mode is active.
+ *
+ * IMPORTANT: mapId="DEMO_MAP_ID" switches Google Maps to vector rendering,
+ * which IGNORES map.setOptions({ styles: [...] }) — this is a Google Maps API
+ * design limitation (styles and mapId are mutually exclusive).
+ *
+ * Workaround: try the FeatureLayer API (available in vector maps), which CAN
+ * hide POI feature layers even when using a mapId.
+ */
 function MapStylesController({ foodMode }: { foodMode: string }) {
   const map = useMap()
   useEffect(() => {
     if (!map) return
+
+    // --- Approach 1: FeatureLayer API (vector maps / mapId) ---
+    // FeatureLayer works with mapId where traditional styles don't.
+    try {
+      const win = window as any
+      const FeatureType = win.google?.maps?.FeatureType
+      if (FeatureType && typeof (map as any).getFeatureLayer === 'function') {
+        const poiLayer = (map as any).getFeatureLayer('POINT_OF_INTEREST')
+        if (poiLayer) {
+          // style = null → uses default (shows POIs); empty function → hides all
+          poiLayer.style = foodMode !== 'none'
+            ? () => null   // returning null for each feature = don't draw it
+            : null         // null on the layer itself = revert to default map style
+          return
+        }
+      }
+    } catch { /* FeatureLayer not available on this map type */ }
+
+    // --- Approach 2: Traditional styles fallback (only works WITHOUT mapId) ---
     map.setOptions({
       styles: foodMode !== 'none' ? [
-        { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
-        { featureType: 'poi.park', elementType: 'geometry', stylers: [{ visibility: 'on' }] },
+        { featureType: 'poi',          elementType: 'all',    stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit',      elementType: 'all',    stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.park',     elementType: 'geometry', stylers: [{ visibility: 'on' }] },
       ] : [],
     })
   }, [map, foodMode])
@@ -98,6 +125,15 @@ function darkenHex(hex: string): string {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
 }
 
+/** Check if diary entries exist near a given location (~100m threshold) */
+function hasNearbyDiaryEntry(entries: Entry[], lat: number, lng: number): boolean {
+  return entries.some(e =>
+    !e.wantToVisit &&
+    Math.abs(e.lat - lat) < NEARBY_M &&
+    Math.abs(e.lng - lng) < NEARBY_M
+  )
+}
+
 export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, onPoiClick, settings, filterTag, searchQuery, mapRef, searchPin, onSearchPinClick, onClearSearchPin, sheetOpen }: Props) {
   const map = useMap()
   const placesLib = useMapsLibrary('places')
@@ -109,63 +145,44 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [selectedFood, setSelectedFood] = useState<FoodPlace | null>(null)
   const [loadingFood, setLoadingFood] = useState(false)
   const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
-
-  // Bug fix: don't call watchPosition on mount — that triggers iOS permission popup immediately.
-  // Instead, show blue dot from cache (no popup), and only start watching when user taps locate.
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
   const watchIdRef = useRef<number | null>(null)
 
-  // Cleanup watcher on unmount
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
     }
   }, [])
 
   const handleLocate = () => {
     if (!navigator.geolocation) return
-    // Start watchPosition only when user explicitly taps locate
-    // (this triggers the iOS permission popup user-initiated — much better UX)
     if (watchIdRef.current === null) {
       const id = navigator.geolocation.watchPosition(
         p => {
           const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setCurrentPos(pos)
-          setCachedGeo(pos.lat, pos.lng)
+          setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng)
         },
         () => {},
         { enableHighAccuracy: true, maximumAge: 10000 },
       )
       watchIdRef.current = id
     }
-    // Pan to current position
     const cached = getCachedGeo()
-    if (cached) {
-      map?.panTo(cached)
-    } else {
-      navigator.geolocation.getCurrentPosition(p => {
-        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-        setCurrentPos(pos)
-        setCachedGeo(pos.lat, pos.lng)
-        map?.panTo(pos)
-      })
-    }
+    if (cached) map?.panTo(cached)
+    else navigator.geolocation.getCurrentPosition(p => {
+      const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+      setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng); map?.panTo(pos)
+    })
   }
 
   const placesService = useMemo(() => placesLib && map ? new placesLib.PlacesService(map) : null, [placesLib, map])
 
   const searchNearby = (type: 'restaurant' | 'cafe') => {
     if (foodMode === type) {
-      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null)
-      setShowDiaryPins(true)
-      return
+      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); setShowDiaryPins(true); return
     }
     if (!placesService || !map) return
-    setFoodMode(type); setLoadingFood(true)
-    setFoodPlaces([])
-    setSelectedFood(null)
+    setFoodMode(type); setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null)
     setShowDiaryPins(false)
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }
@@ -205,6 +222,18 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
   })
 
+  // Handle food/cafe marker tap:
+  // - If the user has visited this place before → show history immediately (no InfoWindow step)
+  // - Otherwise → show the InfoWindow with restaurant details
+  const handleFoodMarkerTap = (place: FoodPlace) => {
+    if (hasNearbyDiaryEntry(entries, place.lat, place.lng)) {
+      setSelectedFood(null)
+      onPoiClick(place.lat, place.lng, place.name)
+    } else {
+      setSelectedFood(place)
+    }
+  }
+
   return (
     <Map
       defaultCenter={{ lat: settings.defaultLat, lng: settings.defaultLng }}
@@ -214,21 +243,33 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       disableDefaultUI={true}
       zoomControl={false}
       gestureHandling={sheetOpen ? 'none' : 'greedy'}
-      // Hide keyboard shortcuts help link (also set via map.setOptions in MapSetup)
-      {...({ keyboardShortcuts: false } as any)}
       className="w-full h-full"
+      {...({ keyboardShortcuts: false } as any)}
       onClick={e => {
         const lat = e.detail.latLng?.lat
         const lng = e.detail.latLng?.lng
         const placeId = e.detail.placeId
+
         if (placeId && placesService) {
+          // Tapped a Google Maps native POI (restaurant, cafe, etc.)
           e.stop()
           setSelectedFood(null); onClearSearchPin()
-          placesService.getDetails({ placeId, fields: ['name', 'geometry', 'formatted_address', 'rating'] }, (place: any, status: any) => {
-            if (status === 'OK' && place) {
-              setNativePoi({ placeId, name: place.name || '', lat: place.geometry.location.lat(), lng: place.geometry.location.lng(), address: place.formatted_address || '' })
-            }
-          })
+          placesService.getDetails(
+            { placeId, fields: ['name', 'geometry', 'formatted_address', 'rating'] },
+            (place: any, status: any) => {
+              if (status === 'OK' && place) {
+                const poiLat = place.geometry.location.lat()
+                const poiLng = place.geometry.location.lng()
+                const poiName = place.name || ''
+                // Bug fix: check history immediately on tap, not after InfoWindow button press
+                if (hasNearbyDiaryEntry(entries, poiLat, poiLng)) {
+                  onPoiClick(poiLat, poiLng, poiName)
+                } else {
+                  setNativePoi({ placeId, name: poiName, lat: poiLat, lng: poiLng, address: place.formatted_address || '' })
+                }
+              }
+            },
+          )
           return
         }
         if (lat !== undefined && lng !== undefined) {
@@ -242,7 +283,6 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
 
       {currentPos && <CurrentLocationDot lat={currentPos.lat} lng={currentPos.lng} />}
 
-      {/* Search result pin */}
       {searchPin && (
         <AdvancedMarker position={{ lat: searchPin.lat, lng: searchPin.lng }} onClick={onSearchPinClick}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -254,43 +294,46 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </AdvancedMarker>
       )}
 
-      {/* Diary pins */}
       {showDiaryPins && diaryEntries.map(entry => {
         const color = getEntryPinColor(entry, settings.tagColors)
         const border = darkenHex(color)
         return (
           <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
             onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
-            <Pin
-              background={entry.id === selectedEntryId ? border : color}
-              borderColor={border}
-              glyphColor="white"
-              scale={entry.id === selectedEntryId ? 1.2 : 1.0}
-            />
+            <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
           </AdvancedMarker>
         )
       })}
 
-      {/* Want-to-visit pins */}
       {showDiaryPins && wishlistEntries.map(entry => (
         <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
           onClick={() => { setSelectedFood(null); setNativePoi(null); onClearSearchPin(); onSelectEntry(entry) }}>
-          <Pin background="#7c3aed" borderColor="#6d28d9" glyphColor="white"
-            glyph={<Star size={10} fill="white" color="white" />}
-          />
+          <Pin background="#7c3aed" borderColor="#6d28d9" glyphColor="white" glyph={<Star size={10} fill="white" color="white" />} />
         </AdvancedMarker>
       ))}
 
-      {/* Food/cafe markers */}
-      {foodMode !== 'none' && foodPlaces.map(place => (
-        <AdvancedMarker key={place.placeId} position={{ lat: place.lat, lng: place.lng }} onClick={() => setSelectedFood(place)}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: foodMode === 'cafe' ? '#7c3aed' : '#ea580c', border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
-            {foodMode === 'cafe' ? <Coffee size={14} color="white" /> : <Utensils size={14} color="white" />}
-          </div>
-        </AdvancedMarker>
-      ))}
+      {/* Food/cafe markers — tap immediately checks history */}
+      {foodMode !== 'none' && foodPlaces.map(place => {
+        const hasHistory = hasNearbyDiaryEntry(entries, place.lat, place.lng)
+        return (
+          <AdvancedMarker key={place.placeId} position={{ lat: place.lat, lng: place.lng }}
+            onClick={() => handleFoodMarkerTap(place)}>
+            <div style={{
+              width: hasHistory ? 36 : 32,
+              height: hasHistory ? 36 : 32,
+              borderRadius: '50%',
+              background: foodMode === 'cafe' ? '#7c3aed' : '#ea580c',
+              border: hasHistory ? '3px solid #fbbf24' : '2px solid white',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: hasHistory ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 6px rgba(0,0,0,0.3)',
+            }}>
+              {foodMode === 'cafe' ? <Coffee size={14} color="white" /> : <Utensils size={14} color="white" />}
+            </div>
+          </AdvancedMarker>
+        )
+      })}
 
-      {/* Selected diary InfoWindow */}
+      {/* Diary entry InfoWindow */}
       {selectedEntry && (
         <InfoWindow position={{ lat: selectedEntry.lat, lng: selectedEntry.lng }} pixelOffset={[0, -40]} onClose={() => {}}>
           <div style={{ minWidth: 140, maxWidth: 200 }}>
@@ -301,7 +344,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </InfoWindow>
       )}
 
-      {/* Food/cafe POI InfoWindow */}
+      {/* Food POI InfoWindow (only shown when NO nearby diary entries) */}
       {selectedFood && (
         <InfoWindow position={{ lat: selectedFood.lat, lng: selectedFood.lng }} pixelOffset={[0, -20]} onClose={() => setSelectedFood(null)}>
           <div style={{ minWidth: 160 }}>
@@ -314,7 +357,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </InfoWindow>
       )}
 
-      {/* Native POI InfoWindow */}
+      {/* Native POI InfoWindow (only shown when NO nearby diary entries) */}
       {nativePoi && (
         <InfoWindow position={{ lat: nativePoi.lat, lng: nativePoi.lng }} pixelOffset={[0, -10]} onClose={() => setNativePoi(null)}>
           <div style={{ minWidth: 160 }}>
@@ -326,7 +369,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </InfoWindow>
       )}
 
-      {/* Left overlay controls — food/cafe + diary pin toggle */}
+      {/* Left overlay controls */}
       <div style={{ position: 'absolute', bottom: 90, left: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 10 }}>
         <button onClick={() => searchNearby('restaurant')} style={fabStyle(foodMode === 'restaurant', '#ea580c')} title="レストラン">
           {loadingFood && foodMode === 'restaurant'
@@ -341,7 +384,6 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         <button onClick={() => setShowDiaryPins(v => !v)} style={fabStyle(false, '#ec4899')} title="記録ピン切替">
           {showDiaryPins ? <MapPin size={18} color="#ec4899" /> : <EyeOff size={18} color="#ec4899" />}
         </button>
-        {/* Locate button — starts watchPosition only on user tap (avoids auto permission popup) */}
         <button onClick={handleLocate} style={fabStyle(false, '#4285F4')} title="現在地">
           <Navigation2 size={18} color="#4285F4" />
         </button>
