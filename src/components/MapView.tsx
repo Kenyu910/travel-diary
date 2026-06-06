@@ -204,10 +204,10 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
 
   const searchNearby = (type: 'restaurant' | 'cafe') => {
     if (foodMode === type) {
-      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); return
+      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null); return
     }
     if (!placesService || !map) return
-    setFoodMode(type); setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null)
+    setFoodMode(type); setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null)
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }
     placesService.nearbySearch(
