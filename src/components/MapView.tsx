@@ -332,15 +332,15 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
           <AdvancedMarker key={place.placeId} position={{ lat: place.lat, lng: place.lng }}
             onClick={() => handleFoodMarkerTap(place)}>
             <div style={{
-              width: hasHistory ? 36 : 32,
-              height: hasHistory ? 36 : 32,
+              width: hasHistory ? 44 : 40,
+              height: hasHistory ? 44 : 40,
               borderRadius: '50%',
               background: foodMode === 'cafe' ? '#7c3aed' : '#ea580c',
               border: hasHistory ? '3px solid #fbbf24' : '2px solid white',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: hasHistory ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 6px rgba(0,0,0,0.3)',
             }}>
-              {foodMode === 'cafe' ? <Coffee size={14} color="white" /> : <Utensils size={14} color="white" />}
+              {foodMode === 'cafe' ? <Coffee size={18} color="white" /> : <Utensils size={18} color="white" />}
             </div>
           </AdvancedMarker>
         )
