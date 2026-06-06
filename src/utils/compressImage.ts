@@ -24,7 +24,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
           const blobUrl = URL.createObjectURL(file)
           resolve(blobUrl)
         } catch (e) {
-          reject(new Error('画像の処理に失敗しました。'))
+          reject(new Error(`画像の処理に失敗しました。(形式: ${file.type || 'unknown'}, サイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB)`))
         }
       }
       img.onabort = () => {
@@ -40,6 +40,15 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
       img.onload = () => {
         try {
           let { width, height } = img
+
+          // Check for extremely large images that exceed canvas limits
+          const MAX_CANVAS_SIZE = 16384 // Most browsers support 16384 pixels max
+          if (width > MAX_CANVAS_SIZE || height > MAX_CANVAS_SIZE) {
+            // Downscale more aggressively for huge images
+            const scale = Math.min(MAX_CANVAS_SIZE / width, MAX_CANVAS_SIZE / height)
+            width = Math.floor(width * scale)
+            height = Math.floor(height * scale)
+          }
 
           // Downscale if wider than maxWidth
           if (width > maxWidth) {
