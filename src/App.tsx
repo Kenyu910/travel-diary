@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { PlusCircle, Plus, MapPin, ChevronRight } from 'lucide-react'
+import { PlusCircle, Plus, MapPin, ChevronRight, BookOpen } from 'lucide-react'
+import { ConfirmDialog } from './components/ConfirmDialog'
+import { StarRating } from './components/StarRating'
 import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'
 import { MapView } from './components/MapView'
 import { MapErrorBoundary } from './components/MapErrorBoundary'
@@ -15,7 +17,7 @@ import { EntryDetail } from './components/EntryDetail'
 import { SettingsView } from './components/SettingsView'
 import { useEntries } from './store'
 import { useSettings } from './settings'
-import { getPositionCached, getCachedGeo } from './utils/geoCache'
+import { getCachedGeo } from './utils/geoCache'
 import type { Entry } from './types'
 
 type Sheet = 'form' | 'detail' | 'edit' | 'poi-history' | null
@@ -46,6 +48,7 @@ function AppContent() {
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [searchPin, setSearchPin] = useState<{ lat: number; lng: number; name: string } | null>(null)
   const [poiHistoryEntries, setPoiHistoryEntries] = useState<Entry[]>([])
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const mapRef = useRef<ReturnType<typeof useMap> | null>(null)
   const sheetRef = useRef<Sheet>(null)
@@ -119,16 +122,17 @@ function AppContent() {
   }, [entries])
 
   const handleQuickAdd = () => {
-    getPositionCached(
-      (lat, lng) => {
-        setClickedPos({ lat, lng })
-        setClickedPlaceName('')
-        setSelectedEntry(null)
-        setSheet('form')
-        reverseGeocode(lat, lng, name => setClickedPlaceName(name))
-      },
-      () => alert('位置情報を取得できませんでした。')
-    )
+    // Bug fix: open form IMMEDIATELY with cached/default position
+    // Don't wait for GPS — that blocks the form from appearing
+    const cached = getCachedGeo()
+    const pos = cached ?? { lat: settings.defaultLat, lng: settings.defaultLng }
+    setClickedPos(pos)
+    setClickedPlaceName('')
+    setSelectedEntry(null)
+    setSheet('form')
+    if (cached) {
+      reverseGeocode(cached.lat, cached.lng, name => setClickedPlaceName(name))
+    }
   }
 
   const handleSelectEntry = (entry: Entry) => {
@@ -167,11 +171,15 @@ function AppContent() {
 
   const handleDelete = () => {
     if (!selectedEntry) return
-    if (confirm(`「${selectedEntry.title}」を削除しますか？`)) {
-      deleteEntry(selectedEntry.id)
-      setSelectedEntry(null)
-      setSheet(null)
-    }
+    setConfirmDelete(true)  // Open custom confirm dialog (instead of native confirm())
+  }
+
+  const handleDeleteConfirmed = () => {
+    if (!selectedEntry) return
+    deleteEntry(selectedEntry.id)
+    setSelectedEntry(null)
+    setSheet(null)
+    setConfirmDelete(false)
   }
 
   const handleExport = () => {
@@ -325,38 +333,67 @@ function AppContent() {
             onSave={handleSave} onCancel={() => setSheet('detail')}
             initial={selectedEntry} />
         )}
-        {/* POI History — shown when tapping a place that has existing diary entries */}
+        {/* POI History — shown immediately when tapping a place with existing diary entries */}
         {sheet === 'poi-history' && clickedPos && (
-          <div className="px-4 pt-2 pb-8">
-            <div className="flex items-center gap-2 mb-1">
-              <MapPin size={16} className="text-pink-400 flex-shrink-0" />
-              <p className="font-bold text-gray-800 text-base truncate">{clickedPlaceName || '選択した場所'}</p>
+          <div className="px-4 pt-3 pb-8">
+            {/* Place header */}
+            <div className="flex items-start gap-2 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <MapPin size={15} className="text-pink-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-800 text-base leading-tight truncate">
+                  {clickedPlaceName || '選択した場所'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {poiHistoryEntries.length}回訪問済み
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mb-4">この周辺の過去の記録</p>
-            <div className="flex flex-col gap-2 mb-5">
-              {poiHistoryEntries.map(entry => (
+
+            {/* Divider */}
+            <div className="flex items-center gap-2 my-3">
+              <BookOpen size={11} className="text-gray-300" />
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">過去の記録</p>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
+
+            {/* Entry list */}
+            <div className="flex flex-col gap-2 mb-4">
+              {poiHistoryEntries
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map(entry => (
                 <button
                   key={entry.id}
                   onClick={() => handleSelectEntryFlyTo(entry)}
-                  className="text-left bg-white rounded-2xl shadow-sm border border-pink-100 p-3.5 flex items-center gap-3 active:scale-[0.98] transition-transform"
+                  className="text-left bg-white rounded-2xl shadow-sm border border-pink-100 p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
                 >
                   {entry.photos.length > 0
-                    ? <img src={entry.photos[0]} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
-                    : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-                        <MapPin size={18} className="text-pink-400" />
+                    ? <img src={entry.photos[0]} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                    : <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin size={20} className="text-pink-400" />
                       </div>
                   }
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
-                    <p className="text-xs text-gray-400">{entry.date}</p>
-                    {entry.rating ? (
-                      <p className="text-xs text-yellow-400">{'★'.repeat(entry.rating)}{'☆'.repeat(5 - entry.rating)}</p>
-                    ) : null}
+                    <p className="font-semibold text-sm text-gray-800 truncate leading-snug">{entry.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{entry.date}</p>
+                    {(entry.rating ?? 0) > 0 && (
+                      <div className="mt-1">
+                        <StarRating value={entry.rating!} readonly size={12} />
+                      </div>
+                    )}
+                    {entry.tags.length > 0 && (
+                      <p className="text-xs text-purple-400 mt-0.5 truncate">
+                        {entry.tags.map(t => `#${t}`).join(' ')}
+                      </p>
+                    )}
                   </div>
                   <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                 </button>
               ))}
             </div>
+
+            {/* New entry button */}
             <button
               onClick={() => setSheet('form')}
               className="w-full py-3.5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold shadow-md flex items-center justify-center gap-2 active:scale-95 transition-transform"
@@ -366,6 +403,17 @@ function AppContent() {
           </div>
         )}
       </BottomSheet>
+
+      {/* iOS-friendly delete confirmation (replaces native confirm()) */}
+      <ConfirmDialog
+        open={confirmDelete}
+        message={`「${selectedEntry?.title || '記録'}」を削除しますか？\nこの操作は取り消せません。`}
+        confirmLabel="削除"
+        cancelLabel="キャンセル"
+        danger
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

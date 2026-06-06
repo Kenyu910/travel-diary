@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { ConfirmDialog } from './ConfirmDialog'
 import {
   User, Palette, Map, Database, Info, Edit3, LayoutGrid, List,
   Clock, CalendarDays, Lightbulb, Download, Upload, HardDrive,
@@ -115,6 +116,8 @@ function SegmentControl<T extends string>({ options, value, onChange }: {
 
 export function SettingsView({ settings, update, entries, onImport, onExport, onClearAll }: Props) {
   const importRef = useRef<HTMLInputElement>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [importData, setImportData] = useState<Entry[] | null>(null)
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -125,10 +128,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         const data = JSON.parse(ev.target?.result as string)
         const imported: Entry[] = Array.isArray(data) ? data : []
         if (imported.length === 0) { alert('有効なデータが見つかりませんでした'); return }
-        if (confirm(`${imported.length} 件の記録をインポートしますか？\n既存データとマージされます。`)) {
-          onImport(imported)
-          alert(`${imported.length} 件をインポートしました`)
-        }
+        setImportData(imported)  // Show custom confirm dialog
       } catch { alert('ファイルの読み込みに失敗しました') }
     }
     reader.readAsText(file)
@@ -257,13 +257,7 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
         <Row icon={Upload}     label="データをインポート"   sub="JSONファイルから復元・マージ"   onRowClick={() => importRef.current?.click()} />
         <input ref={importRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
         <Row icon={HardDrive}  label="使用ストレージ"       sub={`約 ${storageKB} KB 使用中`} />
-        <Row icon={Trash2}     label="全データを削除"       danger
-          onRowClick={() => {
-            if (confirm('すべての記録を削除しますか？\nこの操作は取り消せません。')) {
-              if (confirm('本当に削除しますか？')) onClearAll()
-            }
-          }}
-        />
+        <Row icon={Trash2} label="全データを削除" danger onRowClick={() => setConfirmClear(true)} />
       </Card>
 
       {/* Changelog */}
@@ -300,6 +294,26 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
           <RotateCcw size={11} /> 設定をリセット
         </button>
       </div>
+
+      {/* Custom confirm dialogs (replace native confirm() for iOS PWA compatibility) */}
+      <ConfirmDialog
+        open={confirmClear}
+        message="すべての記録を削除しますか？&#10;この操作は取り消せません。"
+        confirmLabel="全削除"
+        onConfirm={() => { onClearAll(); setConfirmClear(false) }}
+        onCancel={() => setConfirmClear(false)}
+      />
+      <ConfirmDialog
+        open={importData !== null}
+        message={`${importData?.length ?? 0} 件の記録をインポートしますか？\n既存データとマージされます。`}
+        confirmLabel="インポート"
+        danger={false}
+        onConfirm={() => {
+          if (importData) { onImport(importData) }
+          setImportData(null)
+        }}
+        onCancel={() => setImportData(null)}
+      />
     </div>
   )
 }
