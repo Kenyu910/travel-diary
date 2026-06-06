@@ -45,8 +45,8 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
   }
   const handleHandleTouchEnd = () => {
     dragging.current = false
-    if (dragY > 100) { setDragY(0); onClose() }
-    else setDragY(0)
+    if (dragY > 100) onClose()
+    setDragY(0)
   }
 
   const sheetStyle: React.CSSProperties = {

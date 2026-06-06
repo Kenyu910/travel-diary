@@ -187,6 +187,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
             lat: p.geometry.location.lat(), lng: p.geometry.location.lng(),
             vicinity: p.vicinity || '', rating: p.rating,
           })))
+        } else {
+          setFoodPlaces([])
         }
       },
     )
