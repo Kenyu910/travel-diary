@@ -43,7 +43,15 @@ export function loadSettings(): AppSettings {
 }
 
 export function saveSettings(s: AppSettings) {
-  localStorage.setItem(KEY, JSON.stringify(s))
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s))
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      alert('ストレージが満杯です。古い記録を削除してください。')
+    } else {
+      console.error('Failed to save settings:', e)
+    }
+  }
 }
 
 export function useSettings() {

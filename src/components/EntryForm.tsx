@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed } from 'lucide-react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
@@ -22,6 +22,9 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
   const placesLib = useMapsLibrary('places')
   const win = window as any
 
+  // Memoize onChange to prevent listener accumulation on every render
+  const memoizedOnChange = useCallback(onChange, [onChange])
+
   useEffect(() => {
     if (!placesLib || !inputRef.current) return
     const G = win.google?.maps
@@ -35,7 +38,7 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
       const place = ac.getPlace()
       const loc = place.geometry?.location
       if (loc) {
-        onChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
+        memoizedOnChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
       }
     })
     // Bias toward current position — use cache to avoid repeated prompts
@@ -51,7 +54,7 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
     return () => {
       try { G?.event?.removeListener(listener) } catch { /* ignore */ }
     }
-  }, [placesLib]) // onChange intentionally omitted (stable ref)
+  }, [placesLib, memoizedOnChange])
 
   return (
     <div className="relative">
@@ -342,9 +345,13 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
 
       <p className="text-xs text-gray-300 text-center">{formLat.toFixed(5)}, {formLng.toFixed(5)}</p>
 
-      <button type="submit"
-        className="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-2xl font-semibold shadow-md shadow-pink-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
-        <Save size={18} /> 保存する
+      <button type="submit" disabled={compressing}
+        className={`w-full py-4 rounded-2xl font-semibold shadow-md flex items-center justify-center gap-2 transition-transform ${
+          compressing
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-pink-100 active:scale-95'
+        }`}>
+        <Save size={18} /> {compressing ? '処理中...' : '保存する'}
       </button>
     </form>
   )

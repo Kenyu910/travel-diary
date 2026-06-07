@@ -119,6 +119,22 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
   const [confirmClear, setConfirmClear] = useState(false)
   const [importData, setImportData] = useState<Entry[] | null>(null)
 
+  // Validate entry schema before importing
+  const isValidEntry = (e: any): e is Entry => {
+    return (
+      typeof e === 'object' &&
+      e !== null &&
+      typeof e.id === 'string' &&
+      typeof e.date === 'string' &&
+      typeof e.lat === 'number' &&
+      typeof e.lng === 'number' &&
+      typeof e.title === 'string' &&
+      typeof e.body === 'string' &&
+      Array.isArray(e.photos) &&
+      Array.isArray(e.tags)
+    )
+  }
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -126,7 +142,8 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
     reader.onload = ev => {
       try {
         const data = JSON.parse(ev.target?.result as string)
-        const imported: Entry[] = Array.isArray(data) ? data : []
+        // Filter and validate entries — only import valid ones
+        const imported: Entry[] = Array.isArray(data) ? data.filter(isValidEntry) : []
         if (imported.length === 0) { alert('有効なデータが見つかりませんでした'); return }
         setImportData(imported)  // Show custom confirm dialog
       } catch { alert('ファイルの読み込みに失敗しました') }

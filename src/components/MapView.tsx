@@ -129,7 +129,14 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const mapStyle = MAP_STYLES[settings.mapStyle]
 
   const [userShowDiaryPins, setUserShowDiaryPins] = useState(true)
-  const [foodMode, setFoodMode] = useState<'none' | 'restaurant' | 'cafe'>('none')
+  const [foodMode, setFoodMode] = useState<'none' | 'restaurant' | 'cafe'>(() => {
+    try {
+      const saved = localStorage.getItem('travel-diary-foodmode')
+      return (saved as any) || 'none'
+    } catch {
+      return 'none'
+    }
+  })
   const [foodPlaces, setFoodPlaces] = useState<FoodPlace[]>([])
   const [selectedFood, setSelectedFood] = useState<FoodPlace | null>(null)
   const [loadingFood, setLoadingFood] = useState(false)
@@ -180,19 +187,32 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     }
   }, [])
 
+  // Persist food mode to localStorage so it survives tab switches
+  useEffect(() => {
+    try {
+      localStorage.setItem('travel-diary-foodmode', foodMode)
+    } catch (e) {
+      console.error('Failed to save food mode:', e)
+    }
+  }, [foodMode])
+
   const handleLocate = () => {
     if (!navigator.geolocation) return
-    if (watchIdRef.current === null) {
-      const id = navigator.geolocation.watchPosition(
-        p => {
-          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng)
-        },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 10000 },
-      )
-      watchIdRef.current = id
+    // Clear old watch before starting new one to prevent multiple active watches
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
     }
+    const id = navigator.geolocation.watchPosition(
+      p => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+        setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng)
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000 },
+    )
+    watchIdRef.current = id
+
     const cached = getCachedGeo()
     if (cached) map?.panTo(cached)
     else navigator.geolocation.getCurrentPosition(p => {
@@ -441,8 +461,6 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes locPulse { 0% { transform: scale(0.9); opacity: 0.9 } 70% { transform: scale(1.8); opacity: 0.15 } 100% { transform: scale(2); opacity: 0 } }
-        /* Hide Google Maps attribution and copyright notice */
-        .gm-style-cc { display: none !important; }
       `}</style>
     </Map>
   )

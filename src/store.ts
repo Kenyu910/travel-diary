@@ -18,7 +18,15 @@ export function useEntries() {
   useEffect(() => {
     // Bug fix: skip initial render to avoid unnecessary write on mount
     if (isFirstRender.current) { isFirstRender.current = false; return }
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
+    try {
+      localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        alert('ストレージが満杯です。古い記録を削除してください。')
+      } else {
+        console.error('Failed to save entries:', e)
+      }
+    }
   }, [entries])
 
   const addEntry = (entry: Entry) => setEntries(prev => [entry, ...prev])
@@ -51,7 +59,15 @@ export function useGlobalTags() {
 
   useEffect(() => {
     if (isFirstTagRender.current) { isFirstTagRender.current = false; return }
-    localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
+    try {
+      localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        alert('ストレージが満杯です。古い記録を削除してください。')
+      } else {
+        console.error('Failed to save tags:', e)
+      }
+    }
   }, [tags])
 
   const addTag = (name: string) => {

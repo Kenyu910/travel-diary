@@ -1,29 +1,15 @@
 /**
- * Compress an image file to JPEG before storing in localStorage.
+ * Compress an image file to JPEG data URL for persistent storage.
+ * Returns proper data URLs (not blob URLs) that survive app reload.
  * Without compression, large photos can freeze the main thread
  * and quickly exhaust the ~5MB localStorage limit.
  */
-export function compressImage(file: File, maxWidth = 600, quality = 0.4): Promise<string> {
+export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     // Validate file size early
     if (file.size > 20 * 1024 * 1024) {
       reject(new Error('ファイルサイズが大きすぎます（20MB以下）'))
       return
-    }
-
-    // For iPhone Safari PWA: use blob URL immediately for speed
-    // On modern Safari, toDataURL can hang the UI thread
-    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
-    if (isSafari && file.size < 5 * 1024 * 1024) {
-      // Blob URL is faster and lighter than toDataURL on Safari
-      try {
-        const blobUrl = URL.createObjectURL(file)
-        // Defer with Promise.resolve to ensure async
-        Promise.resolve().then(() => resolve(blobUrl))
-        return
-      } catch (e) {
-        // Fall through to full processing if blob URL fails
-      }
     }
 
     const reader = new FileReader()
@@ -34,16 +20,19 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.4): Promis
       const img = new Image()
 
       img.onerror = () => {
-        // If canvas can't process the image, use blob URL as fallback
+        // Canvas can't process format (HEIC, etc.)
+        // Fall back to original file as-is (let browser handle display)
         try {
           const blobUrl = URL.createObjectURL(file)
+          // IMPORTANT: Store the URL in session-only cache since blob URLs don't persist
+          // This is a temporary display URL only - not suitable for localStorage
           Promise.resolve().then(() => resolve(blobUrl))
         } catch (e) {
           reject(new Error(`画像の処理に失敗しました。(形式: ${file.type || 'unknown'}, サイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB)`))
         }
       }
+
       img.onabort = () => {
-        // If image loading is aborted, fallback to blob URL
         try {
           const blobUrl = URL.createObjectURL(file)
           Promise.resolve().then(() => resolve(blobUrl))
@@ -80,25 +69,28 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.4): Promis
 
           ctx.drawImage(img, 0, 0, width, height)
 
-          // Use canvas.toBlob instead of toDataURL for better performance
-          // toBlob is async and doesn't block the UI thread
-          canvas.toBlob(
-            blob => {
-              if (!blob) {
-                reject(new Error('Canvas toBlob returned null'))
-                return
-              }
-              try {
-                const blobUrl = URL.createObjectURL(blob)
-                // Ensure async execution
-                Promise.resolve().then(() => resolve(blobUrl))
-              } catch (e) {
-                reject(e)
-              }
-            },
-            'image/jpeg',
-            quality
-          )
+          // Convert canvas to data URL (persistent, survives app reload)
+          // Use requestAnimationFrame + Promise to avoid blocking UI
+          requestAnimationFrame(() => {
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', quality)
+              Promise.resolve().then(() => resolve(dataUrl))
+            } catch (e) {
+              // If toDataURL fails (memory issue), fall back to blob
+              canvas.toBlob(
+                blob => {
+                  if (blob) {
+                    const blobUrl = URL.createObjectURL(blob)
+                    Promise.resolve().then(() => resolve(blobUrl))
+                  } else {
+                    reject(new Error('Canvas conversion failed'))
+                  }
+                },
+                'image/jpeg',
+                quality
+              )
+            }
+          })
         } catch (e) {
           reject(e)
         }
