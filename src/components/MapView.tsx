@@ -140,7 +140,41 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   // Show diary pins when user hasn't manually hidden them (independent of food mode)
   const showDiaryPins = userShowDiaryPins
 
+  // Auto-fetch current location on app open
   useEffect(() => {
+    if (!navigator.geolocation) return
+
+    // Try to get cached position first
+    const cached = getCachedGeo()
+    if (cached) {
+      setCurrentPos(cached)
+    } else {
+      // If no cache, fetch current position once
+      navigator.geolocation.getCurrentPosition(
+        p => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+          setCurrentPos(pos)
+          setCachedGeo(pos.lat, pos.lng)
+        },
+        () => {}, // Silent error
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    }
+
+    // Start continuous position watching
+    if (watchIdRef.current === null) {
+      const id = navigator.geolocation.watchPosition(
+        p => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+          setCurrentPos(pos)
+          setCachedGeo(pos.lat, pos.lng)
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000 }
+      )
+      watchIdRef.current = id
+    }
+
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
     }
@@ -407,6 +441,8 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes locPulse { 0% { transform: scale(0.9); opacity: 0.9 } 70% { transform: scale(1.8); opacity: 0.15 } 100% { transform: scale(2); opacity: 0 } }
+        /* Hide Google Maps attribution and copyright notice */
+        .gm-style-cc { display: none !important; }
       `}</style>
     </Map>
   )
