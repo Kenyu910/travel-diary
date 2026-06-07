@@ -3,12 +3,27 @@
  * Without compression, large photos can freeze the main thread
  * and quickly exhaust the ~5MB localStorage limit.
  */
-export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promise<string> {
+export function compressImage(file: File, maxWidth = 600, quality = 0.4): Promise<string> {
   return new Promise((resolve, reject) => {
     // Validate file size early
     if (file.size > 20 * 1024 * 1024) {
       reject(new Error('ファイルサイズが大きすぎます（20MB以下）'))
       return
+    }
+
+    // For iPhone Safari PWA: use blob URL immediately for speed
+    // On modern Safari, toDataURL can hang the UI thread
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+    if (isSafari && file.size < 5 * 1024 * 1024) {
+      // Blob URL is faster and lighter than toDataURL on Safari
+      try {
+        const blobUrl = URL.createObjectURL(file)
+        // Defer with Promise.resolve to ensure async
+        Promise.resolve().then(() => resolve(blobUrl))
+        return
+      } catch (e) {
+        // Fall through to full processing if blob URL fails
+      }
     }
 
     const reader = new FileReader()
@@ -22,7 +37,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
         // If canvas can't process the image, use blob URL as fallback
         try {
           const blobUrl = URL.createObjectURL(file)
-          resolve(blobUrl)
+          Promise.resolve().then(() => resolve(blobUrl))
         } catch (e) {
           reject(new Error(`画像の処理に失敗しました。(形式: ${file.type || 'unknown'}, サイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB)`))
         }
@@ -31,7 +46,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
         // If image loading is aborted, fallback to blob URL
         try {
           const blobUrl = URL.createObjectURL(file)
-          resolve(blobUrl)
+          Promise.resolve().then(() => resolve(blobUrl))
         } catch (e) {
           reject(new Error('画像の読み込みがキャンセルされました'))
         }
@@ -65,26 +80,25 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.6): Promis
 
           ctx.drawImage(img, 0, 0, width, height)
 
-          // Use requestIdleCallback with short timeout for non-blocking conversion
-          // Fallback to immediate timeout for better browser compatibility
-          if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => {
+          // Use canvas.toBlob instead of toDataURL for better performance
+          // toBlob is async and doesn't block the UI thread
+          canvas.toBlob(
+            blob => {
+              if (!blob) {
+                reject(new Error('Canvas toBlob returned null'))
+                return
+              }
               try {
-                resolve(canvas.toDataURL('image/jpeg', quality))
+                const blobUrl = URL.createObjectURL(blob)
+                // Ensure async execution
+                Promise.resolve().then(() => resolve(blobUrl))
               } catch (e) {
                 reject(e)
               }
-            }, { timeout: 1000 })
-          } else {
-            // Fast fallback for Safari and older browsers
-            setTimeout(() => {
-              try {
-                resolve(canvas.toDataURL('image/jpeg', quality))
-              } catch (e) {
-                reject(e)
-              }
-            }, 10)
-          }
+            },
+            'image/jpeg',
+            quality
+          )
         } catch (e) {
           reject(e)
         }
