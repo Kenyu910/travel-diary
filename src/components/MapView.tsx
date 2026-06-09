@@ -207,6 +207,20 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     }
   }, [foodMode])
 
+  // Sync foodMode from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'travel-diary-foodmode' && e.newValue) {
+        const mode = e.newValue as 'none' | 'restaurant' | 'cafe'
+        if (mode === 'restaurant' || mode === 'cafe' || mode === 'none') {
+          setFoodMode(mode)
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   const handleLocate = () => {
     if (!navigator.geolocation) return
     // Clear old watch before starting new one to prevent multiple active watches

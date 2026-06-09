@@ -82,13 +82,16 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   // Track if user has manually edited the place name field
   // If they have, GPS auto-fill should NOT overwrite their input
   const [placeNameEdited, setPlaceNameEdited] = useState(!!initial?.placeName || !!defaultPlaceName)
+  const hasReceivedInitialNameRef = useRef(!!defaultPlaceName)
 
   // Bug fix: sync defaultPlaceName when GPS resolves ONLY if user hasn't typed manually
+  // Only apply GPS result once per mount to prevent race conditions
   useEffect(() => {
-    if (!initial && defaultPlaceName && !placeNameEdited) {
+    if (!initial && defaultPlaceName && !hasReceivedInitialNameRef.current && !placeNameEdited) {
       setPlaceName(defaultPlaceName)
+      hasReceivedInitialNameRef.current = true
     }
-  }, [defaultPlaceName, initial, placeNameEdited])
+  }, [defaultPlaceName, initial])
   // Sync lat/lng from parent when position updates (new entry only)
   useEffect(() => {
     if (!initial) { setFormLat(lat); setFormLng(lng) }
