@@ -173,7 +173,7 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
           <>
             {/* Nearby search button */}
             <button
-              onMouseDown={e => { e.preventDefault(); handleNearbySearch() }}
+              onPointerDown={e => { e.preventDefault(); handleNearbySearch() }}
               className="absolute right-8 top-1/2 -translate-y-1/2 text-pink-400 z-10 p-0.5"
               title="周辺を検索"
             >
@@ -181,7 +181,7 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
             </button>
             {/* Clear button */}
             <button
-              onMouseDown={e => { e.preventDefault(); handleClear() }}
+              onPointerDown={e => { e.preventDefault(); handleClear() }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 z-10"
             >
               <X size={14} />
@@ -210,7 +210,7 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
               {nearbyResults.map(r => (
                 <button
                   key={r.placeId}
-                  onMouseDown={e => { e.preventDefault(); handleSelectResult(r) }}
+                  onPointerDown={e => { e.preventDefault(); handleSelectResult(r) }}
                   onClick={() => handleSelectResult(r)}
                   className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 border-b border-gray-50 last:border-0 active:bg-pink-50 transition-colors"
                 >

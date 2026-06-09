@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { getPositionCached } from './utils/geoCache'
 
+// Prevent duplicate quota error alerts
+let quotaErrorShownTime = 0
+const showQuotaError = () => {
+  const now = Date.now()
+  if (now - quotaErrorShownTime > 2000) {
+    quotaErrorShownTime = now
+    alert('ストレージが満杯です。古い記録を削除してください。')
+  }
+}
+
 export type MapStyle = 'roadmap' | 'satellite' | 'terrain'
 export type ListStyle = 'card' | 'compact'
 export type SortOrder = 'newest' | 'oldest'
@@ -47,7 +57,7 @@ export function saveSettings(s: AppSettings) {
     localStorage.setItem(KEY, JSON.stringify(s))
   } catch (e) {
     if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-      alert('ストレージが満杯です。古い記録を削除してください。')
+      showQuotaError()  // Deduplicated alert
     } else if (import.meta.env.DEV) {
       console.error('Failed to save settings:', e)
     }

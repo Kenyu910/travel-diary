@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Entry } from './types'
 
+// ── Error handling ────────────────────────────────────────────
+let quotaErrorShownTime = 0
+const showQuotaError = () => {
+  const now = Date.now()
+  if (now - quotaErrorShownTime > 2000) {  // Show only once per 2 seconds
+    quotaErrorShownTime = now
+    alert('ストレージが満杯です。古い記録を削除してください。')
+  }
+}
+
 // ── Entries ──────────────────────────────────────────────────
 const ENTRIES_KEY = 'travel-diary-entries'
 
@@ -22,7 +32,7 @@ export function useEntries() {
       localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        alert('ストレージが満杯です。古い記録を削除してください。')
+        showQuotaError()  // Deduplicated alert
       } else if (import.meta.env.DEV) {
         console.error('Failed to save entries:', e)
       }
@@ -63,7 +73,7 @@ export function useGlobalTags() {
       localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        alert('ストレージが満杯です。古い記録を削除してください。')
+        showQuotaError()  // Deduplicated alert
       } else if (import.meta.env.DEV) {
         console.error('Failed to save tags:', e)
       }

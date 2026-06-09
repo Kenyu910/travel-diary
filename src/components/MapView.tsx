@@ -218,10 +218,19 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
 
     const cached = getCachedGeo()
     if (cached) map?.panTo(cached)
-    else navigator.geolocation.getCurrentPosition(p => {
-      const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-      setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng); map?.panTo(pos)
-    })
+    else navigator.geolocation.getCurrentPosition(
+      p => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+        setCurrentPos(pos); setCachedGeo(pos.lat, pos.lng); map?.panTo(pos)
+      },
+      () => {
+        // Geolocation denied or timed out - fallback to Tokyo
+        if (import.meta.env.DEV) console.warn('Geolocation failed in handleLocate')
+        const fallback = { lat: 35.6762, lng: 139.6503 }
+        map?.panTo(fallback)
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   const placesService = useMemo(() => placesLib && map ? new placesLib.PlacesService(map) : null, [placesLib, map])

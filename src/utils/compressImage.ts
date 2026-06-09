@@ -50,10 +50,14 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
           }
 
           // Downscale if wider than maxWidth
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width)
+          // Ensure width is valid to prevent NaN in calculations
+          if (width > 0 && width > maxWidth) {
+            height = Math.max(1, Math.round((height * maxWidth) / width))
             width = maxWidth
           }
+          // Ensure minimum valid dimensions
+          if (width <= 0) width = 1
+          if (height <= 0) height = 1
 
           const canvas = document.createElement('canvas')
           canvas.width = width
@@ -71,7 +75,8 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
             if ('requestIdleCallback' in window) {
               (window as any).requestIdleCallback(fn, { timeout: 2000 })
             } else {
-              requestAnimationFrame(fn)
+              // Use setTimeout instead of requestAnimationFrame to avoid high-frequency re-execution
+              setTimeout(fn, 0)
             }
           }
 

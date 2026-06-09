@@ -45,6 +45,6 @@ export function getPositionCached(
       onSuccess(pos.coords.latitude, pos.coords.longitude)
     },
     () => onError?.(),
-    { maximumAge: 300_000, timeout: 10_000 },
+    { maximumAge: 300_000, timeout: 5_000 },  // Reduced from 10s to 5s for better UX
   )
 }
