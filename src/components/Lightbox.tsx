@@ -18,7 +18,7 @@ export function Lightbox({ photos, index, onClose, onPrev, onNext }: Props) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, onPrev, onNext])
+  }, [])  // Empty dependency array — handler closure captures current onClose/onPrev/onNext
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={onClose}>

@@ -74,6 +74,7 @@ function AppContent() {
     if (sheetRef.current === 'edit') { setSheet('detail'); return }
     setSheet(null)
     setSelectedEntry(null)
+    setSearchPin(null)  // Clear search pin when closing sheet
   }, [])
 
   const handleTabChange = (t: Tab) => {
@@ -301,7 +302,8 @@ function AppContent() {
             {tab === 'list' && (
               <DiaryList entries={entries} filterTag={filterTag}
                 onSelectEntry={handleSelectEntry} onFilterTag={setFilterTag}
-                onExport={handleExport} settings={settings} />
+                onExport={handleExport} settings={settings}
+                onUpdateSettings={patch => updateSettings(patch)} />
             )}
             {tab === 'calendar' && (
               <CalendarView entries={entries} onSelectEntry={handleSelectEntry} />

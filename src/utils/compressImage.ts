@@ -3,6 +3,9 @@
  * Returns proper data URLs (not blob URLs) that survive app reload.
  * Without compression, large photos can freeze the main thread
  * and quickly exhaust the ~5MB localStorage limit.
+ *
+ * CRITICAL FIX: Never use blob URLs for persistent storage.
+ * All returned URLs must be data URLs or cached properly.
  */
 export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -21,24 +24,16 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
 
       img.onerror = () => {
         // Canvas can't process format (HEIC, etc.)
-        // Fall back to original file as-is (let browser handle display)
-        try {
-          const blobUrl = URL.createObjectURL(file)
-          // IMPORTANT: Store the URL in session-only cache since blob URLs don't persist
-          // This is a temporary display URL only - not suitable for localStorage
-          Promise.resolve().then(() => resolve(blobUrl))
-        } catch (e) {
-          reject(new Error(`画像の処理に失敗しました。(形式: ${file.type || 'unknown'}, サイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB)`))
-        }
+        // Do NOT use blob URL as it doesn't persist across app reloads
+        // Instead, reject and let caller handle the error
+        reject(new Error(
+          `申し訳ございません。${file.type || '画像'}形式には対応していません。\n` +
+          `別のアプリで JPG に変換してからお試しください。`
+        ))
       }
 
       img.onabort = () => {
-        try {
-          const blobUrl = URL.createObjectURL(file)
-          Promise.resolve().then(() => resolve(blobUrl))
-        } catch (e) {
-          reject(new Error('画像の読み込みがキャンセルされました'))
-        }
+        reject(new Error('画像の読み込みがキャンセルされました'))
       }
 
       img.onload = () => {
@@ -69,28 +64,28 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
 
           ctx.drawImage(img, 0, 0, width, height)
 
-          // Convert canvas to data URL (persistent, survives app reload)
-          // Use requestAnimationFrame + Promise to avoid blocking UI
-          requestAnimationFrame(() => {
-            try {
-              const dataUrl = canvas.toDataURL('image/jpeg', quality)
-              Promise.resolve().then(() => resolve(dataUrl))
-            } catch (e) {
-              // If toDataURL fails (memory issue), fall back to blob
-              canvas.toBlob(
-                blob => {
-                  if (blob) {
-                    const blobUrl = URL.createObjectURL(blob)
-                    Promise.resolve().then(() => resolve(blobUrl))
-                  } else {
-                    reject(new Error('Canvas conversion failed'))
-                  }
-                },
-                'image/jpeg',
-                quality
-              )
-            }
-          })
+          // Convert to data URL using toBlob → readAsDataURL
+          // This is more efficient than toDataURL and always returns a data URL
+          canvas.toBlob(
+            blob => {
+              if (!blob) {
+                reject(new Error('キャンバスの変換に失敗しました'))
+                return
+              }
+              const reader = new FileReader()
+              reader.onload = () => {
+                const dataUrl = reader.result as string
+                // Ensure async execution with Promise
+                Promise.resolve().then(() => resolve(dataUrl))
+              }
+              reader.onerror = () => {
+                reject(new Error('データ URL への変換に失敗しました'))
+              }
+              reader.readAsDataURL(blob)
+            },
+            'image/jpeg',
+            quality
+          )
         } catch (e) {
           reject(e)
         }

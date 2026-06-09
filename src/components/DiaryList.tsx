@@ -10,13 +10,24 @@ type Props = {
   onFilterTag: (tag: string | null) => void
   onExport: () => void
   settings: AppSettings
+  onUpdateSettings?: (patch: Partial<AppSettings>) => void
 }
 
-export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onExport, settings }: Props) {
+export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onExport, settings, onUpdateSettings }: Props) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState(settings.defaultSort)
   const [listStyle, setListStyle] = useState(settings.listStyle)
   const [diaryMode, setDiaryMode] = useState<'diary' | 'wishlist'>('diary')
+
+  const handleSortChange = (newSort: typeof sort) => {
+    setSort(newSort)
+    onUpdateSettings?.({ defaultSort: newSort })
+  }
+
+  const handleListStyleChange = (newStyle: typeof listStyle) => {
+    setListStyle(newStyle)
+    onUpdateSettings?.({ listStyle: newStyle })
+  }
 
   const modeEntries = diaryMode === 'diary'
     ? entries.filter(e => !e.wantToVisit)
@@ -72,11 +83,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="flex bg-gray-100 rounded-xl overflow-hidden">
-              <button onClick={() => setListStyle('card')}
+              <button onClick={() => handleListStyleChange('card')}
                 className={`p-2 transition-colors ${listStyle === 'card' ? 'bg-white shadow-sm text-pink-500' : 'text-gray-400'}`}>
                 <LayoutGrid size={15} />
               </button>
-              <button onClick={() => setListStyle('compact')}
+              <button onClick={() => handleListStyleChange('compact')}
                 className={`p-2 transition-colors ${listStyle === 'compact' ? 'bg-white shadow-sm text-pink-500' : 'text-gray-400'}`}>
                 <List size={15} />
               </button>
@@ -104,11 +115,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
 
         {/* Sort */}
         <div className="flex gap-2">
-          <button onClick={() => setSort('newest')}
+          <button onClick={() => handleSortChange('newest')}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'newest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
             <Clock size={11} /> 新しい順
           </button>
-          <button onClick={() => setSort('oldest')}
+          <button onClick={() => handleSortChange('oldest')}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'oldest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
             <CalendarDays size={11} /> 古い順
           </button>

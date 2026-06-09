@@ -168,24 +168,25 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       )
     }
 
-    // Start continuous position watching
-    if (watchIdRef.current === null) {
-      const id = navigator.geolocation.watchPosition(
-        p => {
-          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setCurrentPos(pos)
-          setCachedGeo(pos.lat, pos.lng)
-        },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 10000 }
-      )
-      watchIdRef.current = id
-    }
+    // Start continuous position watching (only once, prevent duplicates)
+    const id = navigator.geolocation.watchPosition(
+      p => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+        setCurrentPos(pos)
+        setCachedGeo(pos.lat, pos.lng)
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    )
+    watchIdRef.current = id
 
     return () => {
-      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
     }
-  }, [])
+  }, [])  // Empty dependency array ensures this runs only once
 
   // Persist food mode to localStorage so it survives tab switches
   useEffect(() => {

@@ -33,6 +33,8 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
     const win = window as any
     const G = win.google?.maps
 
+    const cleanups: Array<() => void> = []
+
     const createAutoComplete = (bounds?: any) => {
       if (!inputRef.current) return () => {}
       const opts: any = {
@@ -58,22 +60,28 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
       }
     }
 
-    let cleanup = () => {}
+    cleanups.push(createAutoComplete())
+
     if (navigator.geolocation && G) {
-      cleanup = createAutoComplete()
       // Use cached position — no repeated permission prompt
       getPositionCached((lat, lng) => {
+        // Clean up old listener before creating new one with bounds
+        cleanups.forEach(c => c())
+        cleanups.length = 0
+
         const d = 0.05
         const bounds = new G.LatLngBounds(
           new G.LatLng(lat - d, lng - d),
           new G.LatLng(lat + d, lng + d),
         )
-        cleanup = createAutoComplete(bounds)
+        cleanups.push(createAutoComplete(bounds))
       })
-    } else {
-      cleanup = createAutoComplete()
     }
-    return () => cleanup()
+
+    return () => {
+      cleanups.forEach(c => c())
+      cleanups.length = 0
+    }
   }, [placesLib, onPlaceSelected])
 
   /** Text search for keyword like "ラーメン" — shows nearby results list */
