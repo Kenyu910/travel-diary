@@ -48,7 +48,7 @@ export function saveSettings(s: AppSettings) {
   } catch (e) {
     if (e instanceof DOMException && e.name === 'QuotaExceededError') {
       alert('ストレージが満杯です。古い記録を削除してください。')
-    } else {
+    } else if (import.meta.env.DEV) {
       console.error('Failed to save settings:', e)
     }
   }
@@ -57,16 +57,23 @@ export function saveSettings(s: AppSettings) {
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
   const isFirstRender = useRef(true)
+  const isInitializedRef = useRef(!!localStorage.getItem(KEY))
 
   // Auto-detect location on first install (no saved settings)
+  // Only run this once, not every time localStorage is checked
   useEffect(() => {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) {
+    if (!isInitializedRef.current) {
+      // First time: auto-detect location
       getPositionCached((lat, lng) => {
-        setSettings(prev => ({ ...prev, defaultLat: lat, defaultLng: lng }))
+        setSettings(prev => {
+          const updated = { ...prev, defaultLat: lat, defaultLng: lng }
+          // Mark as initialized after first successful save
+          isInitializedRef.current = true
+          return updated
+        })
       })
     }
-  }, []) // run once
+  }, []) // run once on mount
 
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }

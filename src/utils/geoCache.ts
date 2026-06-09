@@ -21,10 +21,12 @@ export function setCachedGeo(lat: number, lng: number): void {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ lat, lng, ts: Date.now() }))
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-      console.warn('Geolocation cache failed: localStorage quota exceeded')
-    } else {
-      console.error('Failed to cache geolocation:', e)
+    if (import.meta.env.DEV) {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        console.warn('Geolocation cache failed: localStorage quota exceeded')
+      } else {
+        console.error('Failed to cache geolocation:', e)
+      }
     }
   }
 }

@@ -193,7 +193,9 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     try {
       localStorage.setItem('travel-diary-foodmode', foodMode)
     } catch (e) {
-      console.error('Failed to save food mode:', e)
+      if (import.meta.env.DEV) {
+        console.error('Failed to save food mode:', e)
+      }
     }
   }, [foodMode])
 

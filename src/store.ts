@@ -23,7 +23,7 @@ export function useEntries() {
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         alert('ストレージが満杯です。古い記録を削除してください。')
-      } else {
+      } else if (import.meta.env.DEV) {
         console.error('Failed to save entries:', e)
       }
     }
@@ -64,7 +64,7 @@ export function useGlobalTags() {
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         alert('ストレージが満杯です。古い記録を削除してください。')
-      } else {
+      } else if (import.meta.env.DEV) {
         console.error('Failed to save tags:', e)
       }
     }

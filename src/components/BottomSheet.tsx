@@ -41,7 +41,12 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
   const handleHandleTouchMove = (e: React.TouchEvent) => {
     if (!dragging.current) return
     const delta = e.touches[0].clientY - startY.current
-    if (delta > 0) setDragY(delta)
+    if (delta > 0) {
+      // Use requestAnimationFrame for smooth synchronized updates during fast touch events
+      requestAnimationFrame(() => {
+        setDragY(delta)
+      })
+    }
   }
   const handleHandleTouchEnd = () => {
     dragging.current = false

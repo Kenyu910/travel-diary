@@ -66,26 +66,37 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
 
           // Convert to data URL using toBlob → readAsDataURL
           // This is more efficient than toDataURL and always returns a data URL
-          canvas.toBlob(
-            blob => {
-              if (!blob) {
-                reject(new Error('キャンバスの変換に失敗しました'))
-                return
-              }
-              const reader = new FileReader()
-              reader.onload = () => {
-                const dataUrl = reader.result as string
-                // Ensure async execution with Promise
-                Promise.resolve().then(() => resolve(dataUrl))
-              }
-              reader.onerror = () => {
-                reject(new Error('データ URL への変換に失敗しました'))
-              }
-              reader.readAsDataURL(blob)
-            },
-            'image/jpeg',
-            quality
-          )
+          // Schedule on next available idle time to prevent UI blocking
+          const scheduleTask = (fn: () => void) => {
+            if ('requestIdleCallback' in window) {
+              (window as any).requestIdleCallback(fn, { timeout: 2000 })
+            } else {
+              requestAnimationFrame(fn)
+            }
+          }
+
+          scheduleTask(() => {
+            canvas.toBlob(
+              blob => {
+                if (!blob) {
+                  reject(new Error('キャンバスの変換に失敗しました'))
+                  return
+                }
+                const reader = new FileReader()
+                reader.onload = () => {
+                  const dataUrl = reader.result as string
+                  // Ensure async execution with Promise
+                  Promise.resolve().then(() => resolve(dataUrl))
+                }
+                reader.onerror = () => {
+                  reject(new Error('データ URL への変換に失敗しました'))
+                }
+                reader.readAsDataURL(blob)
+              },
+              'image/jpeg',
+              quality
+            )
+          })
         } catch (e) {
           reject(e)
         }
