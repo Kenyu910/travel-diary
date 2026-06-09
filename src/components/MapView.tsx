@@ -143,6 +143,7 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
   const watchIdRef = useRef<number | null>(null)
+  const isWatchActiveRef = useRef(false)
 
   // Show diary pins when user hasn't manually hidden them (independent of food mode)
   const showDiaryPins = userShowDiaryPins
@@ -150,6 +151,9 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   // Auto-fetch current location on app open
   useEffect(() => {
     if (!navigator.geolocation) return
+
+    // Prevent duplicate watch registration
+    if (isWatchActiveRef.current) return
 
     // Try to get cached position first
     const cached = getCachedGeo()
@@ -169,21 +173,25 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     }
 
     // Start continuous position watching (only once, prevent duplicates)
-    const id = navigator.geolocation.watchPosition(
-      p => {
-        const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-        setCurrentPos(pos)
-        setCachedGeo(pos.lat, pos.lng)
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 10000 }
-    )
-    watchIdRef.current = id
+    if (!isWatchActiveRef.current) {
+      const id = navigator.geolocation.watchPosition(
+        p => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+          setCurrentPos(pos)
+          setCachedGeo(pos.lat, pos.lng)
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000 }
+      )
+      watchIdRef.current = id
+      isWatchActiveRef.current = true
+    }
 
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
+        isWatchActiveRef.current = false
       }
     }
   }, [])  // Empty dependency array ensures this runs only once

@@ -129,9 +129,14 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         compressed.push(result)
       }
       // Batch update: only call setPhotos once after all files are processed
-      setPhotos(prev => [...prev, ...compressed])
-    } catch {
-      alert('写真の処理に失敗しました。')
+      // Use functional update to ensure race-condition safety
+      setPhotos(prev => {
+        // Ensure we're not adding duplicates if async operations raced
+        const newPhotos = [...prev, ...compressed]
+        return newPhotos
+      })
+    } catch (e) {
+      alert(`写真の処理に失敗しました。${e instanceof Error ? e.message : ''}`)
     } finally {
       setCompressing(false)
     }

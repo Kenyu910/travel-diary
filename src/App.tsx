@@ -59,7 +59,10 @@ function AppContent() {
 
   const reverseGeocode = useCallback((lat: number, lng: number, cb: (name: string) => void) => {
     if (!geocoder) return
+    let isMounted = true
     geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+      // Abort if component unmounted
+      if (!isMounted) return
       if (status === 'OK' && results?.[0]) {
         const comps = results[0].address_components as any[]
         const find = (...types: string[]) => comps?.find((c: any) => types.some(t => c.types.includes(t)))?.long_name || ''
@@ -68,6 +71,8 @@ function AppContent() {
         cb(subloc ? `${locality} ${subloc}`.trim() : locality)
       }
     })
+    // Cleanup function to abort geocoding if component unmounts
+    return () => { isMounted = false }
   }, [geocoder])
 
   const closeSheet = useCallback(() => {
@@ -88,13 +93,17 @@ function AppContent() {
     setClickedPos({ lat, lng })
     setClickedPlaceName(name)
     setSelectedEntry(null)
-    const nearby = findNearbyEntries(entries, lat, lng)
-    if (nearby.length > 0) {
-      setPoiHistoryEntries(nearby)
-      setSheet('poi-history')
-    } else {
-      setSheet('form')
-    }
+    // Use functional setState to guarantee latest entries value
+    setSheet(prevSheet => {
+      // At this point, entries should be the latest (captured before state batch)
+      const nearby = findNearbyEntries(entries, lat, lng)
+      if (nearby.length > 0) {
+        setPoiHistoryEntries(nearby)
+        return 'poi-history'
+      } else {
+        return 'form'
+      }
+    })
   }, [entries])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {

@@ -39,6 +39,24 @@ export function useEntries() {
     }
   }, [entries])
 
+  // Sync entries from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === ENTRIES_KEY && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue)
+          if (Array.isArray(updated)) {
+            setEntries(updated)
+          }
+        } catch {
+          if (import.meta.env.DEV) console.error('Failed to sync entries from storage event')
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   const addEntry = (entry: Entry) => setEntries(prev => [entry, ...prev])
   const updateEntry = (updated: Entry) =>
     setEntries(prev => prev.map(e => (e.id === updated.id ? updated : e)))

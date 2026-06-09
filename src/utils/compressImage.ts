@@ -7,7 +7,7 @@
  * CRITICAL FIX: Never use blob URLs for persistent storage.
  * All returned URLs must be data URLs or cached properly.
  */
-export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promise<string> {
+export function compressImage(file: File, maxWidth = 600, quality = 0.65, timeoutMs = 10000): Promise<string> {
   return new Promise((resolve, reject) => {
     // Validate file size early
     if (file.size > 20 * 1024 * 1024) {
@@ -15,9 +15,28 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
       return
     }
 
+    // Set timeout to prevent infinite processing
+    let isResolved = false
+    const timeoutId = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true
+        reject(new Error('画像処理がタイムアウトしました。別の画像をお試しください。'))
+      }
+    }, timeoutMs)
+
+    const cleanup = () => {
+      if (!isResolved) {
+        isResolved = true
+        clearTimeout(timeoutId)
+      }
+    }
+
     const reader = new FileReader()
 
-    reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'))
+    reader.onerror = () => {
+      cleanup()
+      reject(new Error('ファイルの読み込みに失敗しました'))
+    }
 
     reader.onload = ev => {
       const img = new Image()
@@ -26,6 +45,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
         // Canvas can't process format (HEIC, etc.)
         // Do NOT use blob URL as it doesn't persist across app reloads
         // Instead, reject and let caller handle the error
+        cleanup()
         reject(new Error(
           `申し訳ございません。${file.type || '画像'}形式には対応していません。\n` +
           `別のアプリで JPG に変換してからお試しください。`
@@ -33,6 +53,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
       }
 
       img.onabort = () => {
+        cleanup()
         reject(new Error('画像の読み込みがキャンセルされました'))
       }
 
@@ -84,6 +105,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
             canvas.toBlob(
               blob => {
                 if (!blob) {
+                  cleanup()
                   reject(new Error('キャンバスの変換に失敗しました'))
                   return
                 }
@@ -91,9 +113,11 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
                 reader.onload = () => {
                   const dataUrl = reader.result as string
                   // Ensure async execution with Promise
+                  cleanup()  // Clear timeout on success
                   Promise.resolve().then(() => resolve(dataUrl))
                 }
                 reader.onerror = () => {
+                  cleanup()
                   reject(new Error('データ URL への変換に失敗しました'))
                 }
                 reader.readAsDataURL(blob)
@@ -103,6 +127,7 @@ export function compressImage(file: File, maxWidth = 600, quality = 0.65): Promi
             )
           })
         } catch (e) {
+          cleanup()
           reject(e)
         }
       }
