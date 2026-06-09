@@ -94,7 +94,7 @@ function AppContent() {
     setClickedPlaceName(name)
     setSelectedEntry(null)
     // Use functional setState to guarantee latest entries value
-    setSheet(prevSheet => {
+    setSheet(() => {
       // At this point, entries should be the latest (captured before state batch)
       const nearby = findNearbyEntries(entries, lat, lng)
       if (nearby.length > 0) {
