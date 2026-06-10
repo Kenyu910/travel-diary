@@ -95,12 +95,15 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
 
     const doSearch = (location?: { lat: number; lng: number }) => {
       const req: any = { query: value.trim() }
-      if (location) {
+      // Prioritize map center location over cached position
+      const mapCenter = mapRef?.current?.getCenter?.()
+      if (mapCenter) {
+        req.location = { lat: mapCenter.lat(), lng: mapCenter.lng() }
+        req.radius = 2000
+      } else if (location) {
+        // Fallback to cached position if map center unavailable
         req.location = location
         req.radius = 2000
-      } else if (mapRef?.current) {
-        const center = mapRef.current.getCenter?.()
-        if (center) { req.location = { lat: center.lat(), lng: center.lng() }; req.radius = 2000 }
       }
       service.textSearch(req, (results: any, status: any) => {
         setSearching(false)
@@ -118,6 +121,7 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
       })
     }
 
+    // Try to get cached position as fallback, but map center takes priority
     getPositionCached(
       (lat, lng) => doSearch({ lat, lng }),
       () => doSearch(),
