@@ -10,7 +10,9 @@ body {
 }
 
 #root {
-  height: 100dvh;
+  /* var(--app-height) is set from window.innerHeight in main.tsx — reliable on
+     cold launch where 100dvh can be reported too short. 100dvh is the fallback. */
+  height: var(--app-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;

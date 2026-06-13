@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.2.0',
+    date: '2026-06-13',
+    title: '起動時のレイアウト確定を修正',
+    changes: [
+      '起動直後に下部ナビの下に余白ができ、スワイプするまで直らない不具合を修正（画面の実高さで高さを確定）',
+    ],
+  },
+  {
     version: '2.1.9',
     date: '2026-06-13',
     title: '下部タブの白背景を調整',
