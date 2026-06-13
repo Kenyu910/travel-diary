@@ -115,6 +115,15 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.1.5',
+    date: '2026-06-13',
+    title: '起動時の画面ずれを修正',
+    changes: [
+      '起動時にヘッダーがステータスバーに潜り込む不具合を修正（ステータスバー領域をOS側で確保）',
+      '2.1.4で下部ナビが浮く原因になった暫定対応を撤回',
+    ],
+  },
+  {
     version: '2.1.4',
     date: '2026-06-13',
     title: '場所候補の改善・起動時表示の再修正',

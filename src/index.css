@@ -2,20 +2,11 @@
 
 * { box-sizing: border-box; }
 
-html, body {
+body {
   margin: 0;
   font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   background: #fdf6fb;
   overscroll-behavior: none;
-  /* iOS standalone PWA: lock the page so it can't scroll up under the status
-     bar / dynamic island on launch (the "header is pushed up until you swipe
-     down" bug). The app's own #root handles all internal scrolling. */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
 }
 
 #root {
