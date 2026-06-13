@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed } from 'lucide-react'
+import { extractGps } from '../utils/exifGps'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
@@ -105,7 +106,49 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const [compressing, setCompressing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Place suggestions derived from the photo's EXIF GPS location
+  type PlaceSuggestion = { name: string; lat: number; lng: number; vicinity: string }
+  const [photoPlaces, setPhotoPlaces] = useState<PlaceSuggestion[]>([])
+  const [photoPlacesLoading, setPhotoPlacesLoading] = useState(false)
+  const placesLib = useMapsLibrary('places')
+  const placesDivRef = useRef<HTMLDivElement | null>(null)
+
   const { tags: globalTags, addTag: addGlobalTag } = useGlobalTags()
+
+  /** Look up nearby POIs at the photo's GPS location and offer them as place candidates */
+  const suggestPlacesFromGps = useCallback((lat: number, lng: number) => {
+    if (!placesLib || !placesDivRef.current) return
+    setPhotoPlacesLoading(true)
+    const service = new placesLib.PlacesService(placesDivRef.current)
+    service.nearbySearch(
+      { location: { lat, lng }, radius: 120 },
+      (results: any, status: any) => {
+        setPhotoPlacesLoading(false)
+        if (status === 'OK' && results?.length) {
+          setPhotoPlaces(results.slice(0, 6).map((p: any) => ({
+            name: p.name,
+            lat: p.geometry.location.lat(),
+            lng: p.geometry.location.lng(),
+            vicinity: p.vicinity || '',
+          })))
+        } else {
+          // No POIs nearby — still offer the raw coordinates so the photo's
+          // location isn't lost
+          setPhotoPlaces([])
+          setFormLat(lat)
+          setFormLng(lng)
+        }
+      },
+    )
+  }, [placesLib])
+
+  const applySuggestion = (s: PlaceSuggestion) => {
+    setPlaceName(s.name)
+    setPlaceNameEdited(true)
+    setFormLat(s.lat)
+    setFormLng(s.lng)
+    setPhotoPlaces([])
+  }
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -126,6 +169,16 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
     if (!files.length) return
     e.target.value = ''
     setCompressing(true)
+
+    // Read EXIF GPS from the ORIGINAL files (compression strips metadata).
+    // Use the first photo that has a location to suggest place candidates.
+    ;(async () => {
+      for (const file of files) {
+        const gps = await extractGps(file)
+        if (gps) { suggestPlacesFromGps(gps.lat, gps.lng); break }
+      }
+    })()
+
     try {
       const compressed: string[] = []
       for (const file of files) {
@@ -202,7 +255,38 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
             if (newLng !== undefined) setFormLng(newLng)
           }}
         />
+
+        {/* Place candidates from the photo's GPS location */}
+        {(photoPlacesLoading || photoPlaces.length > 0) && (
+          <div className="mt-2 bg-pink-50 border border-pink-100 rounded-2xl p-3">
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 mb-2">
+              <Image size={11} /> 写真の場所の候補
+              {photoPlacesLoading && <Loader2 size={11} className="animate-spin" />}
+            </p>
+            {photoPlaces.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {photoPlaces.map((s, i) => (
+                  <button
+                    key={`${s.name}-${i}`}
+                    type="button"
+                    onClick={() => applySuggestion(s)}
+                    className="text-left flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-pink-100 active:scale-[0.98] transition-transform"
+                  >
+                    <MapPin size={13} className="text-pink-400 flex-shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm text-gray-800 truncate">{s.name}</span>
+                      {s.vicinity && <span className="block text-[11px] text-gray-400 truncate">{s.vicinity}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Hidden host element for Google PlacesService */}
+      <div ref={placesDivRef} className="hidden" />
 
       {/* Want to visit toggle */}
       <div className="flex items-center justify-between bg-purple-50 rounded-2xl px-4 py-3 border border-purple-100">
