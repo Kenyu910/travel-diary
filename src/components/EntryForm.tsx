@@ -107,7 +107,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Place suggestions derived from the photo's EXIF GPS location
-  type PlaceSuggestion = { name: string; lat: number; lng: number; vicinity: string }
+  type PlaceSuggestion = { name: string; lat: number; lng: number; vicinity: string; d: number }
   const [photoPlaces, setPhotoPlaces] = useState<PlaceSuggestion[]>([])
   const [photoPlacesLoading, setPhotoPlacesLoading] = useState(false)
   const placesLib = useMapsLibrary('places')
@@ -115,31 +115,53 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
 
   const { tags: globalTags, addTag: addGlobalTag } = useGlobalTags()
 
-  /** Look up nearby POIs at the photo's GPS location and offer them as place candidates */
+  /**
+   * Look up nearby restaurants & cafés at the photo's GPS location and offer
+   * them as place candidates. Searches both types ranked by distance, then
+   * merges and re-sorts by true distance so the closest spot is on top.
+   */
   const suggestPlacesFromGps = useCallback((lat: number, lng: number) => {
     if (!placesLib || !placesDivRef.current) return
     setPhotoPlacesLoading(true)
     const service = new placesLib.PlacesService(placesDivRef.current)
-    service.nearbySearch(
-      { location: { lat, lng }, radius: 120 },
-      (results: any, status: any) => {
-        setPhotoPlacesLoading(false)
-        if (status === 'OK' && results?.length) {
-          setPhotoPlaces(results.slice(0, 6).map((p: any) => ({
-            name: p.name,
-            lat: p.geometry.location.lat(),
-            lng: p.geometry.location.lng(),
-            vicinity: p.vicinity || '',
-          })))
-        } else {
-          // No POIs nearby — still offer the raw coordinates so the photo's
-          // location isn't lost
-          setPhotoPlaces([])
-          setFormLat(lat)
-          setFormLng(lng)
-        }
-      },
-    )
+    const RankBy = (window as any).google?.maps?.places?.RankBy
+
+    const searchType = (type: 'restaurant' | 'cafe') =>
+      new Promise<any[]>(resolve => {
+        // rankBy DISTANCE returns the nearest first (no radius allowed);
+        // fall back to a tight radius if the enum isn't available.
+        const req: any = RankBy
+          ? { location: { lat, lng }, rankBy: RankBy.DISTANCE, type }
+          : { location: { lat, lng }, radius: 150, type }
+        service.nearbySearch(req, (results: any, status: any) =>
+          resolve(status === 'OK' && results ? results : []))
+      })
+
+    Promise.all([searchType('restaurant'), searchType('cafe')]).then(lists => {
+      setPhotoPlacesLoading(false)
+      const merged = new Map<string, PlaceSuggestion>()
+      for (const p of [...lists[0], ...lists[1]]) {
+        if (!p.place_id || merged.has(p.place_id)) continue
+        const plat = p.geometry.location.lat()
+        const plng = p.geometry.location.lng()
+        merged.set(p.place_id, {
+          name: p.name,
+          lat: plat,
+          lng: plng,
+          vicinity: p.vicinity || '',
+          d: (plat - lat) ** 2 + (plng - lng) ** 2,
+        })
+      }
+      const sorted = [...merged.values()].sort((a, b) => a.d - b.d).slice(0, 6)
+      if (sorted.length) {
+        setPhotoPlaces(sorted)
+      } else {
+        // No food spots nearby — still keep the photo's coordinates
+        setPhotoPlaces([])
+        setFormLat(lat)
+        setFormLng(lng)
+      }
+    })
   }, [placesLib])
 
   const applySuggestion = (s: PlaceSuggestion) => {
@@ -259,10 +281,20 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         {/* Place candidates from the photo's GPS location */}
         {(photoPlacesLoading || photoPlaces.length > 0) && (
           <div className="mt-2 bg-pink-50 border border-pink-100 rounded-2xl p-3">
-            <p className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 mb-2">
-              <Image size={11} /> 写真の場所の候補
-              {photoPlacesLoading && <Loader2 size={11} className="animate-spin" />}
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="flex items-center gap-1 text-[11px] font-semibold text-pink-500">
+                <Image size={11} /> 写真の場所の候補
+                {photoPlacesLoading && <Loader2 size={11} className="animate-spin" />}
+              </p>
+              <button
+                type="button"
+                onClick={() => { setPhotoPlaces([]); setPhotoPlacesLoading(false) }}
+                className="w-5 h-5 rounded-full bg-pink-100 text-pink-400 flex items-center justify-center flex-shrink-0 active:bg-pink-200"
+                aria-label="候補を閉じる"
+              >
+                <X size={11} />
+              </button>
+            </div>
             {photoPlaces.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 {photoPlaces.map((s, i) => (
