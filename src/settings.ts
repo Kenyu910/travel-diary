@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.1.7',
+    date: '2026-06-13',
+    title: '下部タブの余白を調整',
+    changes: [
+      '下部タブの下にできる余白が広すぎる問題を修正（ホームバーは引き続き回避）',
+    ],
+  },
+  {
     version: '2.1.6',
     date: '2026-06-13',
     title: '検索バー位置の微調整',

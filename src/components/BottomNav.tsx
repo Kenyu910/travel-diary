@@ -24,7 +24,9 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
     <nav
       className="flex bg-white border-t border-gray-100 flex-shrink-0 safe-bottom"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        // Trim the home-indicator inset so the tab bar doesn't leave a big
+        // empty strip below the labels, while still clearing the home bar.
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px) - 14px, 6px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >

@@ -265,7 +265,7 @@ function AppContent() {
     // relative to the viewport (not this container), causing a large gap.
     <div className="relative flex flex-col h-dvh bg-[#fdf6fb]">
       {/* Map layer — always mounted, invisible when non-map tab */}
-      <div className={`absolute inset-0 bottom-[calc(env(safe-area-inset-bottom,0px)+44px)] ${tab !== 'map' ? 'invisible' : ''}`}>
+      <div className={`absolute inset-0 bottom-[calc(max(env(safe-area-inset-bottom,0px)-14px,6px)+44px)] ${tab !== 'map' ? 'invisible' : ''}`}>
         <MapErrorBoundary>
           <MapView
             entries={entries}
