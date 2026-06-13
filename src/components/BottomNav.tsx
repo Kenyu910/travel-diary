@@ -24,6 +24,9 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
     <nav
       className="flex bg-white border-t border-gray-100 flex-shrink-0 safe-bottom"
       style={{
+        // Extend the white background a bit above the tab icons so the "3"
+        // badge on the 日記 tab sits clearly on white with a little margin above.
+        paddingTop: '8px',
         // Trim the home-indicator inset slightly so the tab bar doesn't leave a
         // big empty strip below the labels, while keeping enough clearance that
         // the labels never touch the home bar.

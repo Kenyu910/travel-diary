@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.1.9',
+    date: '2026-06-13',
+    title: '下部タブの白背景を調整',
+    changes: [
+      '下タブの白い背景の上端を、日記タブの通知バッジのちょい上まで伸ばすよう調整',
+    ],
+  },
+  {
     version: '2.1.8',
     date: '2026-06-13',
     title: '下部タブの余白を再調整',
