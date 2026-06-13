@@ -289,13 +289,13 @@ function AppContent() {
           <>
             <div
               className="absolute z-10"
-              style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)', left: 16, right: 16 }}
+              style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 12px)', left: 16, right: 16 }}
             >
               <PlacesSearch onPlaceSelected={handlePlaceSelected} mapRef={mapRef} />
             </div>
 
             {searchPin && (
-              <div className="absolute z-10 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 56px)', left: '50%', transform: 'translateX(-50%)' }}>
+              <div className="absolute z-10 pointer-events-none" style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 60px)', left: '50%', transform: 'translateX(-50%)' }}>
                 <div className="bg-purple-500 text-white px-4 py-2 rounded-full text-xs shadow-lg whitespace-nowrap">
                   紫のピンをタップして記録を追加
                 </div>

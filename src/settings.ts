@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.1.6',
+    date: '2026-06-13',
+    title: '検索バー位置の微調整',
+    changes: [
+      '検索バーがDynamic Island/ステータスバーに近すぎる問題を調整（最小マージンを確保）',
+    ],
+  },
+  {
     version: '2.1.5',
     date: '2026-06-13',
     title: '起動時の画面ずれを修正',
