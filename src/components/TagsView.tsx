@@ -11,9 +11,11 @@ type Props = {
   onSelectEntry: (entry: Entry) => void
   tagColors: Record<string, string>
   onUpdateTagColors: (colors: Record<string, string>) => void
+  /** Propagate tag rename to all saved entries */
+  onRenameTag: (oldName: string, newName: string) => void
 }
 
-export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry, tagColors, onUpdateTagColors }: Props) {
+export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry, tagColors, onUpdateTagColors, onRenameTag }: Props) {
   const { tags: globalTags, addTag, removeTag, reorderTag, setTags } = useGlobalTags()
   const [newTagInput, setNewTagInput] = useState('')
   const [showAddInput, setShowAddInput] = useState(false)
@@ -66,13 +68,20 @@ export function TagsView({ entries, filterTag, onFilterTag, onSelectEntry, tagCo
       setEditingTag(null); return
     }
     const newName = editValue.trim()
-    // Migrate color key
+    // Migrate color key (keep existing color if newName already has one)
     if (tagColors[editingTag]) {
-      const next = { ...tagColors, [newName]: tagColors[editingTag] }
+      const next = { ...tagColors }
+      if (!next[newName]) next[newName] = next[editingTag]
       delete next[editingTag]
       onUpdateTagColors(next)
     }
-    setTags(prev => prev.map(t => t === editingTag ? newName : t))
+    // If newName already exists, merge (drop old) instead of creating a duplicate
+    setTags(prev => prev.includes(newName)
+      ? prev.filter(t => t !== editingTag)
+      : prev.map(t => t === editingTag ? newName : t))
+    // Rename the tag inside all saved entries too — otherwise counts/filters/pin
+    // colors silently break because entries still hold the old name
+    onRenameTag(editingTag, newName)
     if (filterTag === editingTag) onFilterTag(newName)
     setEditingTag(null)
   }

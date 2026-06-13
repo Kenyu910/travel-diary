@@ -6,6 +6,7 @@ import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
 import { useGlobalTags } from '../store'
 import { getPositionCached } from '../utils/geoCache'
+import { todayLocalISO } from '../utils/localDate'
 import type { Entry } from '../types'
 
 type Props = {
@@ -74,7 +75,7 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
 export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlaceName }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
-  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(initial?.date ?? todayLocalISO())
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
   const [wantToVisit, setWantToVisit] = useState(initial?.wantToVisit ?? false)
   const [formLat, setFormLat] = useState(lat)

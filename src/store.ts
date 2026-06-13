@@ -17,7 +17,9 @@ const ENTRIES_KEY = 'travel-diary-entries'
 export function loadEntries(): Entry[] {
   try {
     const raw = localStorage.getItem(ENTRIES_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
   } catch { return [] }
 }
 

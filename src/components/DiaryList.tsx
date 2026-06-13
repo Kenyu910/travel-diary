@@ -208,7 +208,7 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
         )}
       </div>
 
-      <p className="text-center text-xs text-gray-300 mt-2">{filtered.length} / {entries.length} 件</p>
+      <p className="text-center text-xs text-gray-300 mt-2">{filtered.length} / {modeEntries.length} 件</p>
     </div>
   )
 }

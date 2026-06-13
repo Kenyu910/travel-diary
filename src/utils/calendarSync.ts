@@ -1,12 +1,23 @@
 import type { Entry } from '../types'
 
 /** Create an .ics calendar event string for an entry */
+// RFC 5545 TEXT escaping. Order matters: backslash FIRST, newline LAST —
+// escaping \n before \ double-escaped the backslash, so memos showed a
+// literal "\n" in the calendar app instead of a line break.
+function escapeICS(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/[,;]/g, '\\$&').replace(/\n/g, '\\n')
+}
+
 function createICS(entry: Entry): string {
   const dateStr = entry.date.replace(/-/g, '')
+  // All-day DTEND is exclusive per RFC 5545 — must be the NEXT day
+  const [y, m, d] = entry.date.split('-').map(Number)
+  const end = new Date(y, (m || 1) - 1, (d || 1) + 1)
+  const endStr = `${end.getFullYear()}${String(end.getMonth() + 1).padStart(2, '0')}${String(end.getDate()).padStart(2, '0')}`
   const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-  const title = entry.title.replace(/[,;\\]/g, '\\$&')
-  const place = entry.placeName.replace(/[,;\\]/g, '\\$&')
-  const body = (entry.body || '').replace(/\n/g, '\\n').replace(/[,;\\]/g, '\\$&')
+  const title = escapeICS(entry.title)
+  const place = escapeICS(entry.placeName)
+  const body = escapeICS(entry.body || '')
 
   return [
     'BEGIN:VCALENDAR',
@@ -16,7 +27,7 @@ function createICS(entry: Entry): string {
     `UID:${entry.id}@travel-diary`,
     `DTSTAMP:${now}`,
     `DTSTART;VALUE=DATE:${dateStr}`,
-    `DTEND;VALUE=DATE:${dateStr}`,
+    `DTEND;VALUE=DATE:${endStr}`,
     `SUMMARY:${title}`,
     place ? `LOCATION:${place}` : '',
     body ? `DESCRIPTION:${body}` : '',

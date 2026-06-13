@@ -13,6 +13,9 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
   const [dragY, setDragY] = useState(0)
   const dragging = useRef(false)
   const startY = useRef(0)
+  // Latest drag delta — state lags behind by a frame (rAF), so touchend must
+  // read the ref or fast flicks see a stale dragY and fail to close
+  const dragYRef = useRef(0)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && open) onClose()
@@ -45,15 +48,19 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
     if (!dragging.current) return
     const delta = e.touches[0].clientY - startY.current
     if (delta > 0) {
+      dragYRef.current = delta
       // Use requestAnimationFrame for smooth synchronized updates during fast touch events
       requestAnimationFrame(() => {
-        setDragY(delta)
+        // A pending frame can fire after touchend — without this guard it would
+        // leave the sheet stuck translated down after the drag finished
+        if (dragging.current) setDragY(delta)
       })
     }
   }
   const handleHandleTouchEnd = () => {
     dragging.current = false
-    if (dragY > 100) onClose()
+    if (dragYRef.current > 100) onClose()
+    dragYRef.current = 0
     setDragY(0)
   }
 

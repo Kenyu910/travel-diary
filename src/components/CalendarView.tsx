@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import type { Entry } from '../types'
+import { todayLocalISO } from '../utils/localDate'
 
 type Props = {
   entries: Entry[]
@@ -45,7 +46,7 @@ export function CalendarView({ entries, onSelectEntry }: Props) {
   // Pad to full weeks
   while (cells.length % 7 !== 0) cells.push(null)
 
-  const todayStr = today.toISOString().slice(0, 10)
+  const todayStr = todayLocalISO()
 
   // Entries in this month
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`

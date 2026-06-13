@@ -33,48 +33,38 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
     const win = window as any
     const G = win.google?.maps
 
-    const cleanups: Array<() => void> = []
-
-    const createAutoComplete = (bounds?: any) => {
-      if (!inputRef.current) return () => {}
-      const opts: any = {
-        fields: ['geometry', 'name', 'formatted_address'],
-        componentRestrictions: { country: 'jp' },
+    // Single Autocomplete instance — creating a second one on the same input
+    // (the old pattern) attached two widgets, each with its own dropdown
+    const ac = new placesLib.Autocomplete(inputRef.current, {
+      fields: ['geometry', 'name', 'formatted_address'],
+      componentRestrictions: { country: 'jp' },
+    })
+    const listener = ac.addListener('place_changed', () => {
+      const place = ac.getPlace()
+      const loc = place.geometry?.location
+      if (loc) {
+        const name = place.name || place.formatted_address || ''
+        setValue(name)
+        setShowDropdown(false)
+        setNearbyResults([])
+        inputRef.current?.blur()
+        onPlaceSelected(loc.lat(), loc.lng(), name)
       }
-      if (bounds) opts.bounds = bounds
-      const ac = new placesLib.Autocomplete(inputRef.current, opts)
-      const listener = ac.addListener('place_changed', () => {
-        const place = ac.getPlace()
-        const loc = place.geometry?.location
-        if (loc) {
-          const name = place.name || place.formatted_address || ''
-          setValue(name)
-          setShowDropdown(false)
-          setNearbyResults([])
-          inputRef.current?.blur()
-          onPlaceSelected(loc.lat(), loc.lng(), name)
-        }
-      })
-      return () => {
-        try { G?.event?.removeListener(listener) } catch {}
-      }
-    }
+    })
 
-    cleanups.push(createAutoComplete())
+    const cleanups: Array<() => void> = [() => {
+      try { G?.event?.removeListener(listener) } catch {}
+    }]
 
     if (navigator.geolocation && G) {
-      // Use cached position — no repeated permission prompt
+      // Use cached position — no repeated permission prompt.
+      // Bias the existing instance instead of recreating it.
       getPositionCached((lat, lng) => {
-        // Clean up old listener before creating new one with bounds
-        cleanups.forEach(c => c())
-        cleanups.length = 0
-
         const d = 0.05
-        const bounds = new G.LatLngBounds(
+        ac.setBounds(new G.LatLngBounds(
           new G.LatLng(lat - d, lng - d),
           new G.LatLng(lat + d, lng + d),
-        )
-        cleanups.push(createAutoComplete(bounds))
+        ))
       })
     }
 

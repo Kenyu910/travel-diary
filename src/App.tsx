@@ -18,6 +18,7 @@ import { SettingsView } from './components/SettingsView'
 import { useEntries } from './store'
 import { useSettings } from './settings'
 import { getCachedGeo } from './utils/geoCache'
+import { todayLocalISO } from './utils/localDate'
 import type { Entry } from './types'
 
 type Sheet = 'form' | 'detail' | 'edit' | 'poi-history' | null
@@ -215,15 +216,36 @@ function AppContent() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `travel-diary-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `travel-diary-${todayLocalISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const handleImport = (imported: Entry[]) => {
     const existingIds = new Set(entries.map(e => e.id))
-    const newEntries = imported.filter(e => !existingIds.has(e.id))
+    // Normalize: older/foreign exports may lack optional fields — missing
+    // placeName/tags would crash search and list rendering later
+    const newEntries = imported
+      .filter(e => !existingIds.has(e.id) && Number.isFinite(e.lat) && Number.isFinite(e.lng))
+      .map(e => ({
+        ...e,
+        placeName: typeof e.placeName === 'string' ? e.placeName : '',
+        tags: Array.isArray(e.tags) ? e.tags.filter((t): t is string => typeof t === 'string') : [],
+        photos: Array.isArray(e.photos) ? e.photos.filter((p): p is string => typeof p === 'string') : [],
+        createdAt: typeof e.createdAt === 'string' ? e.createdAt : new Date().toISOString(),
+        rating: typeof e.rating === 'number' && Number.isFinite(e.rating) ? e.rating : undefined,
+        wantToVisit: e.wantToVisit === true,
+      }))
     setEntries([...entries, ...newEntries].sort((a, b) => b.date.localeCompare(a.date)))
+  }
+
+  /** Rename a tag across all saved entries (keeps entry tags in sync with the global tag list) */
+  const handleRenameTag = (oldName: string, newName: string) => {
+    setEntries(prev => prev.map(e =>
+      e.tags.includes(oldName)
+        ? { ...e, tags: Array.from(new Set(e.tags.map(t => (t === oldName ? newName : t)))) }
+        : e
+    ))
   }
 
   const handleClearAll = () => {
@@ -325,6 +347,7 @@ function AppContent() {
                 onSelectEntry={handleSelectEntry}
                 tagColors={settings.tagColors}
                 onUpdateTagColors={colors => updateSettings({ tagColors: colors })}
+                onRenameTag={handleRenameTag}
               />
             )}
             {tab === 'settings' && (
@@ -389,7 +412,7 @@ function AppContent() {
 
             {/* Entry list */}
             <div className="flex flex-col gap-2 mb-4">
-              {poiHistoryEntries
+              {[...poiHistoryEntries]
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .map(entry => (
                 <button

@@ -114,7 +114,7 @@ function darkenHex(hex: string): string {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
 }
 
-/** Check if diary entries exist near a given location (~100m threshold) */
+/** Check if diary entries exist near a given location (~33m threshold, same as NEARBY_M) */
 function hasNearbyDiaryEntry(entries: Entry[], lat: number, lng: number): boolean {
   return entries.some(e =>
     !e.wantToVisit &&
