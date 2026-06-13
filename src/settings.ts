@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.1.8',
+    date: '2026-06-13',
+    title: '下部タブの余白を再調整',
+    changes: [
+      '2.1.7で詰めすぎてラベルがホームバーに近づいた問題を調整（削る量を控えめに）',
+    ],
+  },
+  {
     version: '2.1.7',
     date: '2026-06-13',
     title: '下部タブの余白を調整',
