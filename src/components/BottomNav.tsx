@@ -33,7 +33,7 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         // screen (confirmed: labels hid at y815). Padding by (100vh-100svh-11px)
         // puts the label bottom at ~813 — the lowest they can go and stay
         // visible. The white bar still reaches the screen bottom (no gap).
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh - 11px), 8px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh - 12px), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >

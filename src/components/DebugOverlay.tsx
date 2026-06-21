@@ -62,7 +62,7 @@ export function DebugOverlay() {
       fontSize: 13, fontFamily: 'monospace', padding: 14, borderRadius: 10,
       lineHeight: 1.7, pointerEvents: 'none',
     }}>
-      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.1a</div>
+      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.1b</div>
       {Object.entries(info).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
     </div>
   )
