@@ -6,24 +6,17 @@ html, body {
   margin: 0;
   font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   background: #fdf6fb;
+  height: 100%;
   overscroll-behavior: none;
 }
 
-body {
-  /* Measured on-device: 100vh = the FULL screen (874px), while dvh/svh and
-     position:fixed;inset:0 report ~62px short (the top safe area), which left a
-     gap under the tab bar. So size from 100vh. position:fixed locks the page so
-     it can't rubber-band (was shifting the map while dragging the sheet). */
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100vh;
-  overflow: hidden;
-}
-
 #root {
-  height: 100%; /* fills the full-screen (100vh) body */
+  /* Pin to the REAL viewport. position:fixed;inset:0 resolves to the visible
+     area (~812px here), unlike 100vh (874px) which includes a ~62px band that
+     iOS standalone won't render web content into — that band was clipping the
+     tab labels. fixed+overflow:hidden also stops the page rubber-banding. */
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;

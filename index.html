@@ -10,12 +10,11 @@
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent makes the web view fill the WHOLE screen (incl. the
-         status-bar / home-indicator areas); we pad content with the
-         safe-area-inset-* values. "default" shrank the layout viewport ~62px
-         below the screen, leaving a gap under the bottom tab bar. Rubber-band
-         scrolling is prevented by locking html/body (position:fixed) in CSS. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default" avoids the standalone vh/svh mismatch that black-translucent
+         caused (vh included a 62px band iOS won't render into, clipping the tab
+         labels). Layout is sized from the real viewport (#root position:fixed;
+         inset:0) and padded with safe-area-inset-* values. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="旅日記" />
     <link rel="apple-touch-icon" href="/icon.jpg" />
 
