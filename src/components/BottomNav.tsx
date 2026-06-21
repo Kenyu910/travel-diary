@@ -27,10 +27,10 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         // Extend the white background a bit above the tab icons so the "3"
         // badge on the 日記 tab sits clearly on white with a little margin above.
         paddingTop: '8px',
-        // Trim the home-indicator inset slightly so the tab bar doesn't leave a
-        // big empty strip below the labels, while keeping enough clearance that
-        // the labels never touch the home bar.
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px) - 6px, 10px)',
+        // Full home-indicator inset so the labels clear the home bar (the app
+        // now fills the whole screen via 100vh, so the bottom edge IS the screen
+        // edge). max() keeps a small inset on devices without a home bar.
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >
