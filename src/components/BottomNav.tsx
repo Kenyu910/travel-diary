@@ -24,13 +24,16 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
     <nav
       className="flex bg-white border-t border-gray-100 flex-shrink-0 safe-bottom"
       style={{
+        position: 'relative',
+        zIndex: 20, // sit above the absolutely-positioned map layer
         // Extend the white background a bit above the tab icons so the "3"
         // badge on the 日記 tab sits clearly on white with a little margin above.
         paddingTop: '8px',
-        // Full home-indicator inset so the labels clear the home bar (the app
-        // now fills the whole screen via 100vh, so the bottom edge IS the screen
-        // edge). max() keeps a small inset on devices without a home bar.
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+        // The real off-screen zone at the bottom is (100vh - 100svh) — on this
+        // device 62px — NOT env(safe-area-inset-bottom) (34px). Pad by the
+        // larger so the labels stay above the visible cutoff while the white
+        // bar still reaches the screen bottom (no gap).
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >
