@@ -2,11 +2,18 @@
 
 * { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
   font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   background: #fdf6fb;
   overscroll-behavior: none;
+  /* Lock the page to the viewport so it can never rubber-band scroll. Without
+     this the whole map background shifted while dragging the bottom sheet, and
+     the layout could open scrolled up on launch. #root (sized from the real
+     viewport height via --app-height) handles all internal scrolling. */
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 
 #root {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil, Trash2, Share2, MapPin, Calendar, Tag, ExternalLink, Check } from 'lucide-react'
 import { Lightbox } from './Lightbox'
 import { StarRating } from './StarRating'
+import { openInGoogleMaps } from './MapView'
 import type { Entry } from '../types'
 
 type Props = {
@@ -127,11 +128,7 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo, onMa
             <span className="text-xs text-pink-400 font-medium">アプリ内マップ</span>
           </button>
           <button
-            onClick={() => {
-              const name = entry.placeName || entry.title
-              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}@${entry.lat},${entry.lng}`
-              window.open(url, '_blank')
-            }}
+            onClick={() => openInGoogleMaps(entry.lat, entry.lng, entry.placeName || entry.title)}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-blue-50 border border-blue-100 active:bg-blue-100"
           >
             <ExternalLink size={13} className="text-blue-400" />

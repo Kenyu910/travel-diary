@@ -115,6 +115,16 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.3.1',
+    date: '2026-06-21',
+    title: 'バグ修正',
+    changes: [
+      'Google Mapで見るボタンで空白画面が残る不具合を修正（URL形式を修正）',
+      'ボトムシートを下にドラッグすると背景がずれる不具合を修正（ページ固定）',
+      '起動時に下タブがずれる不具合を修正（ページ固定＋実画面高さ）',
+    ],
+  },
+  {
     version: '2.3.0',
     date: '2026-06-21',
     title: '新機能追加・重要バグ修正',

@@ -78,7 +78,7 @@ function CurrentLocationDot({ lat, lng }: { lat: number; lng: number }) {
  * Uses the Maps URL API format which works reliably on iOS (native Google Maps app).
  * The old @lat,lng,17z format causes "search not found" on mobile.
  */
-function openInGoogleMaps(lat: number, lng: number, name?: string, placeId?: string) {
+export function openInGoogleMaps(lat: number, lng: number, name?: string, placeId?: string) {
   let url: string
   if (placeId && name) {
     // With place ID + name: most reliable, shows the correct POI
@@ -86,13 +86,21 @@ function openInGoogleMaps(lat: number, lng: number, name?: string, placeId?: str
   } else if (placeId) {
     url = `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}`
   } else if (name) {
-    // Coordinates + name: shows a labeled pin at the location
-    url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}@${lat},${lng}`
+    // Coordinates with a label: q=lat,lng(Label) drops a labeled pin at the
+    // exact spot. (The old query=name@lat,lng form is invalid and opened a
+    // blank page that lingered as an empty in-app browser tab.)
+    url = `https://www.google.com/maps?q=${lat},${lng}(${encodeURIComponent(name)})`
   } else {
     // Coordinates only
-    url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+    url = `https://www.google.com/maps?q=${lat},${lng}`
   }
-  window.open(url, '_blank')
+  // Open via a transient anchor — more reliable than window.open for handing
+  // off to the native Google Maps app (universal link) without a blank tab.
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  a.click()
 }
 
 const InfoBtn = ({ label, bg, color, onClick }: { label: string; bg: string; color: string; onClick: () => void }) => (
