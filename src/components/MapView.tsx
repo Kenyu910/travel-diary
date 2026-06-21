@@ -16,6 +16,9 @@ type SearchPin  = { lat: number; lng: number; name: string }
 // accidentally catch other places 50m+ away on the same block.
 const NEARBY_M = 0.0003
 
+// At or above this zoom, show individual diary pins; below it, cluster them.
+const CLUSTER_MAX_ZOOM = 13
+
 type Props = {
   entries: Entry[]
   selectedEntryId: string | null
@@ -142,50 +145,30 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const [loadingFood, setLoadingFood] = useState(false)
   const [nativePoi, setNativePoi] = useState<NativePoi | null>(null)
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(() => getCachedGeo())
+  const [zoom, setZoom] = useState(settings.defaultZoom)
   const watchIdRef = useRef<number | null>(null)
   const isWatchActiveRef = useRef(false)
+
+  // Track zoom so we can cluster diary pins when zoomed out
+  useEffect(() => {
+    if (!map) return
+    const update = () => setZoom(map.getZoom() ?? settings.defaultZoom)
+    update()
+    const l = map.addListener('zoom_changed', update)
+    return () => l.remove()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map])
 
   // Show diary pins when user hasn't manually hidden them (independent of food mode)
   const showDiaryPins = userShowDiaryPins
 
-  // Auto-fetch current location on app open
+  // On app open, show the blue dot from the CACHED location only.
+  // We intentionally do NOT call getCurrentPosition / watchPosition here —
+  // doing so popped the iOS "Allow location?" prompt on every launch.
+  // Live location is requested only when the user taps the locate button.
   useEffect(() => {
-    if (!navigator.geolocation) return
-
-    // Prevent duplicate watch registration
-    if (isWatchActiveRef.current) return
-
-    // Try to get cached position first
     const cached = getCachedGeo()
-    if (cached) {
-      setCurrentPos(cached)
-    } else {
-      // If no cache, fetch current position once
-      navigator.geolocation.getCurrentPosition(
-        p => {
-          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setCurrentPos(pos)
-          setCachedGeo(pos.lat, pos.lng)
-        },
-        () => {}, // Silent error
-        { enableHighAccuracy: true, timeout: 10000 }
-      )
-    }
-
-    // Start continuous position watching (only once, prevent duplicates)
-    if (!isWatchActiveRef.current) {
-      const id = navigator.geolocation.watchPosition(
-        p => {
-          const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setCurrentPos(pos)
-          setCachedGeo(pos.lat, pos.lng)
-        },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 10000 }
-      )
-      watchIdRef.current = id
-      isWatchActiveRef.current = true
-    }
+    if (cached) setCurrentPos(cached)
 
     return () => {
       if (watchIdRef.current !== null) {
@@ -295,6 +278,27 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   const diaryEntries = visibleEntries.filter(e => !e.wantToVisit)
   const wishlistEntries = visibleEntries.filter(e => e.wantToVisit)
 
+  // Cluster diary pins into grid cells when zoomed out, so dense areas don't
+  // turn into an unreadable pile of overlapping markers.
+  const diaryClusters = useMemo(() => {
+    if (zoom >= CLUSTER_MAX_ZOOM) return null  // show individual pins when zoomed in
+    const cell = 84.4 / Math.pow(2, zoom)      // ~60px grid cell, in degrees
+    // Plain object as the bucket map — `Map` here refers to the imported
+    // @vis.gl <Map> component, so we can't use the JS Map constructor.
+    const cells: Record<string, { entries: Entry[]; sumLat: number; sumLng: number }> = {}
+    for (const e of diaryEntries) {
+      const key = `${Math.floor(e.lat / cell)}_${Math.floor(e.lng / cell)}`
+      let c = cells[key]
+      if (!c) { c = { entries: [], sumLat: 0, sumLng: 0 }; cells[key] = c }
+      c.entries.push(e); c.sumLat += e.lat; c.sumLng += e.lng
+    }
+    return Object.values(cells).map(c => ({
+      entries: c.entries,
+      lat: c.sumLat / c.entries.length,
+      lng: c.sumLng / c.entries.length,
+    }))
+  }, [diaryEntries, zoom])
+
   const fabStyle = (active: boolean, color: string): React.CSSProperties => ({
     width: 44, height: 44, borderRadius: '50%',
     background: active ? color : 'white',
@@ -313,6 +317,35 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
     } else {
       setSelectedFood(place)
     }
+  }
+
+  // Render a single diary pin (shared by the clustered and non-clustered paths)
+  const renderDiaryPin = (entry: Entry) => {
+    const color = getEntryPinColor(entry, settings.tagColors)
+    const border = darkenHex(color)
+    // Count how many entries are at this location (for multi-visit badge)
+    const sameLocationCount = diaryEntries.filter(e =>
+      Math.abs(e.lat - entry.lat) < NEARBY_M && Math.abs(e.lng - entry.lng) < NEARBY_M
+    ).length
+    return (
+      <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
+        onClick={() => {
+          setSelectedFood(null); setNativePoi(null); onClearSearchPin()
+          // pink pin tap → show history (same as POI tap)
+          onPoiClick(entry.lat, entry.lng, entry.placeName || entry.title)
+        }}>
+        {sameLocationCount > 1 ? (
+          <div style={{ position: 'relative' }}>
+            <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
+            <div style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+              {sameLocationCount}
+            </div>
+          </div>
+        ) : (
+          <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
+        )}
+      </AdvancedMarker>
+    )
   }
 
   return (
@@ -375,35 +408,30 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
         </AdvancedMarker>
       )}
 
-      {showDiaryPins && diaryEntries.map(entry => {
-        const color = getEntryPinColor(entry, settings.tagColors)
-        const border = darkenHex(color)
-        // Count how many entries are at this location (for multi-visit badge)
-        const sameLocationCount = diaryEntries.filter(e =>
-          Math.abs(e.lat - entry.lat) < NEARBY_M && Math.abs(e.lng - entry.lng) < NEARBY_M
-        ).length
-        return (
-          <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}
-            onClick={() => {
-              setSelectedFood(null); setNativePoi(null); onClearSearchPin()
-              // Bug fix: pink pin tap → show history (same as POI tap)
-              // onPoiClick triggers openFormOrHistory in App.tsx which shows history sheet
-              onPoiClick(entry.lat, entry.lng, entry.placeName || entry.title)
-            }}>
-            {sameLocationCount > 1 ? (
-              // Multiple visits badge on the pin
-              <div style={{ position: 'relative' }}>
-                <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
-                <div style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
-                  {sameLocationCount}
+      {/* Diary pins — clustered when zoomed out, individual when zoomed in */}
+      {showDiaryPins && (diaryClusters
+        ? diaryClusters.map(cluster => {
+            if (cluster.entries.length === 1) return renderDiaryPin(cluster.entries[0])
+            const key = `cluster-${cluster.lat.toFixed(5)}-${cluster.lng.toFixed(5)}`
+            return (
+              <AdvancedMarker key={key} position={{ lat: cluster.lat, lng: cluster.lng }}
+                onClick={() => {
+                  // Zoom into the cluster to break it apart
+                  map?.panTo({ lat: cluster.lat, lng: cluster.lng })
+                  map?.setZoom(Math.min(CLUSTER_MAX_ZOOM + 2, (map.getZoom() ?? zoom) + 3))
+                }}>
+                <div style={{
+                  minWidth: 36, height: 36, padding: '0 6px', borderRadius: 18,
+                  background: '#ec4899', color: 'white', border: '2px solid white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                }}>
+                  {cluster.entries.length}
                 </div>
-              </div>
-            ) : (
-              <Pin background={entry.id === selectedEntryId ? border : color} borderColor={border} glyphColor="white" scale={entry.id === selectedEntryId ? 1.2 : 1.0} />
-            )}
-          </AdvancedMarker>
-        )
-      })}
+              </AdvancedMarker>
+            )
+          })
+        : diaryEntries.map(renderDiaryPin))}
 
       {showDiaryPins && wishlistEntries.map(entry => (
         <AdvancedMarker key={entry.id} position={{ lat: entry.lat, lng: entry.lng }}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { Search, X, MapPin, LocateFixed } from 'lucide-react'
-import { getPositionCached } from '../utils/geoCache'
+import { getCachedGeo } from '../utils/geoCache'
 
 type NearbyResult = {
   placeId: string
@@ -56,16 +56,15 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
       try { G?.event?.removeListener(listener) } catch {}
     }]
 
-    if (navigator.geolocation && G) {
-      // Use cached position — no repeated permission prompt.
-      // Bias the existing instance instead of recreating it.
-      getPositionCached((lat, lng) => {
-        const d = 0.05
-        ac.setBounds(new G.LatLngBounds(
-          new G.LatLng(lat - d, lng - d),
-          new G.LatLng(lat + d, lng + d),
-        ))
-      })
+    // Bias the autocomplete using ONLY the cached location, so simply opening
+    // the map never triggers a geolocation permission prompt.
+    const cachedBias = getCachedGeo()
+    if (cachedBias && G) {
+      const d = 0.05
+      ac.setBounds(new G.LatLngBounds(
+        new G.LatLng(cachedBias.lat - d, cachedBias.lng - d),
+        new G.LatLng(cachedBias.lat + d, cachedBias.lng + d),
+      ))
     }
 
     return () => {
@@ -111,11 +110,10 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
       })
     }
 
-    // Try to get cached position as fallback, but map center takes priority
-    getPositionCached(
-      (lat, lng) => doSearch({ lat, lng }),
-      () => doSearch(),
-    )
+    // Map center is the primary bias (handled in doSearch). Only fall back to a
+    // cached location — never request live GPS here, so search won't prompt.
+    const cached = getCachedGeo()
+    doSearch(cached ?? undefined)
   }, [value, placesLib, mapRef])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

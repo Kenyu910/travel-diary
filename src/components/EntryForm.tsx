@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed } from 'lucide-react'
-import { extractGps } from '../utils/exifGps'
+import { extractPhotoMeta } from '../utils/exifGps'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { StarRating } from './StarRating'
 import { compressImage } from '../utils/compressImage'
 import { useGlobalTags } from '../store'
-import { getPositionCached } from '../utils/geoCache'
+import { getCachedGeo } from '../utils/geoCache'
 import { todayLocalISO } from '../utils/localDate'
 import type { Entry } from '../types'
 
@@ -43,15 +43,15 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
         memoizedOnChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
       }
     })
-    // Bias toward current position — use cache to avoid repeated prompts
-    if (navigator.geolocation) {
-      getPositionCached((lat, lng) => {
-        const d = 0.05
-        ac.setBounds(new G.LatLngBounds(
-          new G.LatLng(lat - d, lng - d),
-          new G.LatLng(lat + d, lng + d)
-        ))
-      })
+    // Bias toward current position — use ONLY the cached location so we never
+    // trigger a permission prompt just by opening the form.
+    const cached = getCachedGeo()
+    if (cached) {
+      const d = 0.05
+      ac.setBounds(new G.LatLngBounds(
+        new G.LatLng(cached.lat - d, cached.lng - d),
+        new G.LatLng(cached.lat + d, cached.lng + d)
+      ))
     }
     return () => {
       try { G?.event?.removeListener(listener) } catch { /* ignore */ }
@@ -77,6 +77,8 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [date, setDate] = useState(initial?.date ?? todayLocalISO())
+  // Once the user picks a date manually, EXIF auto-fill must not override it
+  const dateEditedRef = useRef(false)
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
   const [wantToVisit, setWantToVisit] = useState(initial?.wantToVisit ?? false)
   const [formLat, setFormLat] = useState(lat)
@@ -192,12 +194,21 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
     e.target.value = ''
     setCompressing(true)
 
-    // Read EXIF GPS from the ORIGINAL files (compression strips metadata).
-    // Use the first photo that has a location to suggest place candidates.
+    // Read EXIF from the ORIGINAL files (compression strips metadata).
+    // First photo with a location → place candidates; first with a capture
+    // date → auto-fill the date (new entries only, unless the user edited it).
     ;(async () => {
+      let gotPlace = false, gotDate = false
       for (const file of files) {
-        const gps = await extractGps(file)
-        if (gps) { suggestPlacesFromGps(gps.lat, gps.lng); break }
+        const meta = await extractPhotoMeta(file)
+        if (!meta) continue
+        if (!gotPlace && meta.lat !== undefined && meta.lng !== undefined) {
+          suggestPlacesFromGps(meta.lat, meta.lng); gotPlace = true
+        }
+        if (!gotDate && meta.date && !initial && !dateEditedRef.current) {
+          setDate(meta.date); gotDate = true
+        }
+        if (gotPlace && gotDate) break
       }
     })()
 
@@ -254,7 +265,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
           <Calendar size={11} /> 日付
         </label>
         <input
-          type="date" value={date} onChange={e => setDate(e.target.value)}
+          type="date" value={date} onChange={e => { dateEditedRef.current = true; setDate(e.target.value) }}
           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
         />
       </div>

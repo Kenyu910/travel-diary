@@ -191,6 +191,14 @@ function AppContent() {
     }
   }
 
+  /** Convert a 行きたい entry into a visited diary entry, then open edit to fill it in */
+  const handleMarkVisited = (entry: Entry) => {
+    const updated: Entry = { ...entry, wantToVisit: false, date: todayLocalISO() }
+    updateEntry(updated)
+    setSelectedEntry(updated)
+    setSheet('edit')
+  }
+
   const handleSave = (entry: Entry) => {
     if (sheetRef.current === 'edit') updateEntry(entry)
     else addEntry(entry)
@@ -378,7 +386,8 @@ function AppContent() {
             onFlyTo={(lat, lng) => {
               setTab('map')
               setTimeout(() => mapRef.current?.panTo({ lat, lng }), 100)
-            }} />
+            }}
+            onMarkVisited={handleMarkVisited} />
         )}
         {sheet === 'edit' && selectedEntry && (
           <EntryForm lat={selectedEntry.lat} lng={selectedEntry.lng}

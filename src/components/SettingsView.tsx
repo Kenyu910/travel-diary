@@ -3,12 +3,13 @@ import { ConfirmDialog } from './ConfirmDialog'
 import {
   User, Palette, Map, Database, Info, Edit3, LayoutGrid, List,
   Clock, CalendarDays, Lightbulb, Download, Upload, HardDrive,
-  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image
+  Trash2, LocateFixed, ZoomIn, ChevronRight, RotateCcw, MapPin, Tag, Image, TrendingUp
 } from 'lucide-react'
 import type { AppSettings, MapStyle, ListStyle } from '../settings'
 import { MAP_STYLES, CHANGELOG, DEFAULT_SETTINGS } from '../settings'
 import type { Entry } from '../types'
 import { getPositionCached } from '../utils/geoCache'
+import { StatsView } from './StatsView'
 
 type Props = {
   settings: AppSettings
@@ -183,6 +184,10 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
           </div>
         ))}
       </div>
+
+      {/* Stats / recap */}
+      <SectionHeader icon={TrendingUp} title="ふりかえり" />
+      <StatsView entries={entries} />
 
       {/* Profile settings */}
       <SectionHeader icon={User} title="プロフィール" />

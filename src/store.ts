@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Entry } from './types'
+import { idbGet, idbSet } from './utils/idb'
 
 // ── Error handling ────────────────────────────────────────────
 let quotaErrorShownTime = 0
@@ -24,40 +25,45 @@ export function loadEntries(): Entry[] {
 }
 
 export function useEntries() {
-  const [entries, setEntries] = useState<Entry[]>(loadEntries)
-  const isFirstRender = useRef(true)
+  const [entries, setEntries] = useState<Entry[]>([])
+  const loadedRef = useRef(false)
 
+  // Initial load from IndexedDB, with one-time migration from the old
+  // localStorage store. Photos live inline as data URLs, which used to blow the
+  // localStorage quota — IndexedDB holds far more, so saves no longer fail.
   useEffect(() => {
-    // Bug fix: skip initial render to avoid unnecessary write on mount
-    if (isFirstRender.current) { isFirstRender.current = false; return }
-    try {
-      localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        showQuotaError()  // Deduplicated alert
-      } else if (import.meta.env.DEV) {
-        console.error('Failed to save entries:', e)
-      }
-    }
-  }, [entries])
-
-  // Sync entries from other tabs
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === ENTRIES_KEY && e.newValue) {
-        try {
-          const updated = JSON.parse(e.newValue)
-          if (Array.isArray(updated)) {
-            setEntries(updated)
-          }
-        } catch {
-          if (import.meta.env.DEV) console.error('Failed to sync entries from storage event')
+    let cancelled = false
+    ;(async () => {
+      try {
+        let data = await idbGet<Entry[]>(ENTRIES_KEY)
+        if (!Array.isArray(data)) {
+          // Migrate existing data from localStorage (kept intact as a backup).
+          const legacy = loadEntries()
+          if (legacy.length) await idbSet(ENTRIES_KEY, legacy)
+          data = legacy
         }
+        if (!cancelled) setEntries(Array.isArray(data) ? data : [])
+      } catch {
+        // IndexedDB unavailable (e.g. private mode) — fall back to localStorage
+        if (!cancelled) setEntries(loadEntries())
+      } finally {
+        if (!cancelled) loadedRef.current = true
       }
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
+    })()
+    return () => { cancelled = true }
   }, [])
+
+  // Persist to IndexedDB whenever entries change (after the initial load).
+  useEffect(() => {
+    if (!loadedRef.current) return
+    idbSet(ENTRIES_KEY, entries).catch(e => {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        showQuotaError()
+      } else if (import.meta.env.DEV) {
+        console.error('Failed to save entries to IndexedDB:', e)
+      }
+    })
+  }, [entries])
 
   const addEntry = (entry: Entry) => setEntries(prev => [entry, ...prev])
   const updateEntry = (updated: Entry) =>

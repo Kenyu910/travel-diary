@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Share2, MapPin, Calendar, Tag, ExternalLink } from 'lucide-react'
+import { Pencil, Trash2, Share2, MapPin, Calendar, Tag, ExternalLink, Check } from 'lucide-react'
 import { Lightbox } from './Lightbox'
 import { StarRating } from './StarRating'
 import type { Entry } from '../types'
@@ -10,9 +10,11 @@ type Props = {
   onDelete: () => void
   onClose: () => void
   onFlyTo?: (lat: number, lng: number) => void
+  /** Convert a 行きたい (wishlist) entry into a visited diary entry */
+  onMarkVisited?: (entry: Entry) => void
 }
 
-export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo }: Props) {
+export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo, onMarkVisited }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const handleShare = async () => {
@@ -42,6 +44,18 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo }: Pr
           <Trash2 size={16} />
         </button>
       </div>
+
+      {/* Wishlist → visited conversion */}
+      {entry.wantToVisit && onMarkVisited && (
+        <div className="px-4 pb-3">
+          <button
+            onClick={() => onMarkVisited(entry)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-pink-400 to-rose-400 text-white font-semibold shadow-md active:scale-95 transition-transform"
+          >
+            <Check size={18} /> ここに行った（日記にする）
+          </button>
+        </div>
+      )}
 
       {/* Hero photo */}
       {entry.photos.length > 0 && (
