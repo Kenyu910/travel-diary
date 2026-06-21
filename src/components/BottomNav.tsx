@@ -33,7 +33,7 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         // device 62px — NOT env(safe-area-inset-bottom) (34px). Pad by the
         // larger so the labels stay above the visible cutoff while the white
         // bar still reaches the screen bottom (no gap).
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh), 8px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh - 8px), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >
