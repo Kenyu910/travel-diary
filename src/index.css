@@ -17,9 +17,11 @@ html, body {
 }
 
 #root {
-  /* var(--app-height) is set from window.innerHeight in main.tsx — reliable on
-     cold launch where 100dvh can be reported too short. 100dvh is the fallback. */
-  height: var(--app-height, 100dvh);
+  /* Fill the locked body (position:fixed; inset:0 = full screen incl. safe
+     areas via viewport-fit=cover). Using window.innerHeight here was wrong: it
+     excludes the top inset, leaving #root 62px short of the screen bottom and a
+     gap below the tab bar. height:100% tracks the actual full-screen body. */
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;

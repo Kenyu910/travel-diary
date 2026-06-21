@@ -18,17 +18,15 @@ export function DebugOverlay() {
       const cs = getComputedStyle(probe)
       const root = document.getElementById('root')
       const rootRect = root?.getBoundingClientRect()
+      const bodyRect = document.body.getBoundingClientRect()
       setInfo({
         standalone: String((navigator as any).standalone),
-        displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser',
         innerH: String(window.innerHeight),
         screenH: String(window.screen.height),
-        clientH: String(document.documentElement.clientHeight),
-        visualVP: String(Math.round(window.visualViewport?.height ?? 0)),
-        appHeightVar: getComputedStyle(document.documentElement).getPropertyValue('--app-height').trim() || '(unset)',
+        bodyH: `${Math.round(bodyRect.height)} (bot ${Math.round(bodyRect.bottom)})`,
         safeTop: cs.paddingTop,
         safeBottom: cs.paddingBottom,
-        rootH: rootRect ? `${Math.round(rootRect.height)} (top ${Math.round(rootRect.top)})` : '?',
+        rootH: rootRect ? `${Math.round(rootRect.height)} (bot ${Math.round(rootRect.bottom)})` : '?',
         bodyPos: getComputedStyle(document.body).position,
       })
     }
@@ -44,7 +42,7 @@ export function DebugOverlay() {
       fontSize: 13, fontFamily: 'monospace', padding: 14, borderRadius: 10,
       lineHeight: 1.7, pointerEvents: 'none',
     }}>
-      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.2</div>
+      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.3</div>
       {Object.entries(info).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
     </div>
   )
