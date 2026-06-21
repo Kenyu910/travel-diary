@@ -7,21 +7,23 @@ html, body {
   font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   background: #fdf6fb;
   overscroll-behavior: none;
-  /* Lock the page to the viewport so it can never rubber-band scroll. Without
-     this the whole map background shifted while dragging the bottom sheet, and
-     the layout could open scrolled up on launch. #root (sized from the real
-     viewport height via --app-height) handles all internal scrolling. */
+}
+
+body {
+  /* Measured on-device: 100vh = the FULL screen (874px), while dvh/svh and
+     position:fixed;inset:0 report ~62px short (the top safe area), which left a
+     gap under the tab bar. So size from 100vh. position:fixed locks the page so
+     it can't rubber-band (was shifting the map while dragging the sheet). */
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
   overflow: hidden;
 }
 
 #root {
-  /* Fill the locked body (position:fixed; inset:0 = full screen incl. safe
-     areas via viewport-fit=cover). Using window.innerHeight here was wrong: it
-     excludes the top inset, leaving #root 62px short of the screen bottom and a
-     gap below the tab bar. height:100% tracks the actual full-screen body. */
-  height: 100%;
+  height: 100%; /* fills the full-screen (100vh) body */
   display: flex;
   flex-direction: column;
   overflow: hidden;
