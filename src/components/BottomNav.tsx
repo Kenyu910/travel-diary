@@ -29,10 +29,11 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         // Extend the white background a bit above the tab icons so the "3"
         // badge on the 日記 tab sits clearly on white with a little margin above.
         paddingTop: '8px',
-        // Standard home-indicator inset (the earlier "labels invisible" was the
-        // map layer painting over the nav, now fixed with z-index above). This
-        // sits the labels just above the home bar — as low as they can go.
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+        // The visible bottom cutoff is ~100svh; content below it is clipped off
+        // screen (confirmed: labels hid at y815). Padding by (100vh-100svh-11px)
+        // puts the label bottom at ~813 — the lowest they can go and stay
+        // visible. The white bar still reaches the screen bottom (no gap).
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh - 11px), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >
