@@ -31,17 +31,20 @@ export function DebugOverlay() {
       const root = document.getElementById('root')
       const rootRect = root?.getBoundingClientRect()
       const bodyRect = document.body.getBoundingClientRect()
+      const nav = document.querySelector('nav')
+      const navRect = nav?.getBoundingClientRect()
+      const label = nav?.querySelector('span')
+      const labelRect = label?.getBoundingClientRect()
       setInfo({
-        innerH: String(window.innerHeight),
         screenH: String(window.screen.height),
         bodyH: `${Math.round(bodyRect.height)}`,
         rootH: rootRect ? `${Math.round(rootRect.height)}` : '?',
-        safeTop: cs.paddingTop,
         safeBottom: cs.paddingBottom,
         vh: String(Math.round(pVh.getBoundingClientRect().height)),
-        dvh: String(Math.round(pDvh.getBoundingClientRect().height)),
-        lvh: String(Math.round(pLvh.getBoundingClientRect().height)),
-        svh: String(Math.round(pSvh.getBoundingClientRect().height)),
+        navH: navRect ? `${Math.round(navRect.height)}` : '?',
+        navTopBot: navRect ? `${Math.round(navRect.top)}-${Math.round(navRect.bottom)}` : '?',
+        labelY: labelRect ? `${Math.round(labelRect.top)}-${Math.round(labelRect.bottom)}` : 'NO LABEL',
+        labelTxt: label?.textContent || '(none)',
       })
     }
     read()
@@ -59,7 +62,7 @@ export function DebugOverlay() {
       fontSize: 13, fontFamily: 'monospace', padding: 14, borderRadius: 10,
       lineHeight: 1.7, pointerEvents: 'none',
     }}>
-      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.8</div>
+      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.9</div>
       {Object.entries(info).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
     </div>
   )
