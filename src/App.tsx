@@ -277,7 +277,7 @@ function AppContent() {
       {/* Map layer — always mounted, invisible when non-map tab */}
       <div
         className={`absolute inset-0 ${tab !== 'map' ? 'invisible' : ''}`}
-        style={{ bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 8px) + 52px)' }}
+        style={{ bottom: 'calc(max(env(safe-area-inset-bottom, 0px) - 10px, 8px) + 68px)' }}
       >
         <MapErrorBoundary>
           <MapView
