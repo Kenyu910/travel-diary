@@ -11,12 +11,15 @@ html, body {
 }
 
 #root {
-  /* Pin to the REAL viewport. position:fixed;inset:0 resolves to the visible
-     area (~812px here), unlike 100vh (874px) which includes a ~62px band that
-     iOS standalone won't render web content into — that band was clipping the
-     tab labels. fixed+overflow:hidden also stops the page rubber-banding. */
+  /* Full screen incl. under the Dynamic Island (black-translucent). 100vh=874
+     here so the white tab bar reaches the very bottom (no gap). The bottom
+     ~62px is a band iOS won't render web TEXT into, so tab labels are padded to
+     stay above it (see BottomNav). fixed+overflow:hidden stops rubber-banding. */
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

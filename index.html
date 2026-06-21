@@ -10,11 +10,11 @@
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- "default" avoids the standalone vh/svh mismatch that black-translucent
-         caused (vh included a 62px band iOS won't render into, clipping the tab
-         labels). Layout is sized from the real viewport (#root position:fixed;
-         inset:0) and padded with safe-area-inset-* values. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- black-translucent = immersive: the map fills the whole screen incl.
+         under the Dynamic Island. #root is sized with 100vh so the white tab
+         bar reaches the very bottom (no gap); tab labels are padded to stay
+         above the ~62px bottom band that iOS won't render text into. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="旅日記" />
     <link rel="apple-touch-icon" href="/icon.jpg" />
 

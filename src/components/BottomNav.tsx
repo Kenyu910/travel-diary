@@ -29,9 +29,9 @@ export function BottomNav({ active, onChange, entryCount }: Props) {
         // Extend the white background a bit above the tab icons so the "3"
         // badge on the 日記 tab sits clearly on white with a little margin above.
         paddingTop: '8px',
-        // #root is the real viewport now; sit the labels just above the home
-        // indicator (a touch tighter than the full inset, per request).
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px) - 10px, 8px)',
+        // #root is 100vh (874). Keep labels above the ~62px non-rendering band
+        // (100vh-100svh); the white bar still fills to the screen bottom.
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), calc(100vh - 100svh - 11px), 8px)',
         boxShadow: '0 -1px 0 #f3f4f6, 0 -4px 16px rgba(0,0,0,0.04)',
       }}
     >
