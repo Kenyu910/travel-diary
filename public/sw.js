@@ -7,7 +7,7 @@
  * travelling). Cross-origin requests (Google Maps tiles/SDK) are left untouched
  * — they're not cached, per Maps ToS, and need the network.
  */
-const CACHE = 'travel-diary-v1'
+const CACHE = 'travel-diary-v2'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -28,6 +28,24 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return // don't touch Google Maps etc.
 
+  // Network-first for the HTML document so a new deploy shows up immediately
+  // when online (cache is only a fallback for offline). This avoids the
+  // "stuck on an old version" problem the previous cache-first SW caused.
+  const isHTML = req.mode === 'navigate' || req.destination === 'document'
+  if (isHTML) {
+    event.respondWith(
+      fetch(req)
+        .then(res => {
+          const copy = res.clone()
+          caches.open(CACHE).then(c => c.put(req, copy))
+          return res
+        })
+        .catch(() => caches.match(req))
+    )
+    return
+  }
+
+  // Hashed assets are immutable — cache-first, revalidate in background.
   event.respondWith(
     caches.open(CACHE).then(async cache => {
       const cached = await cache.match(req)
