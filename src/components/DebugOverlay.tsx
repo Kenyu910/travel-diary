@@ -14,25 +14,42 @@ export function DebugOverlay() {
       'position:fixed;top:0;left:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;'
     document.body.appendChild(probe)
 
+    // Probes to discover which CSS unit reports the FULL screen height (874).
+    const mkUnit = (h: string) => {
+      const d = document.createElement('div')
+      d.style.cssText = `position:fixed;top:0;left:0;width:1px;height:${h};visibility:hidden;pointer-events:none;`
+      document.body.appendChild(d)
+      return d
+    }
+    const pVh = mkUnit('100vh')
+    const pDvh = mkUnit('100dvh')
+    const pLvh = mkUnit('100lvh')
+    const pSvh = mkUnit('100svh')
+
     const read = () => {
       const cs = getComputedStyle(probe)
       const root = document.getElementById('root')
       const rootRect = root?.getBoundingClientRect()
       const bodyRect = document.body.getBoundingClientRect()
       setInfo({
-        standalone: String((navigator as any).standalone),
         innerH: String(window.innerHeight),
         screenH: String(window.screen.height),
-        bodyH: `${Math.round(bodyRect.height)} (bot ${Math.round(bodyRect.bottom)})`,
+        bodyH: `${Math.round(bodyRect.height)}`,
+        rootH: rootRect ? `${Math.round(rootRect.height)}` : '?',
         safeTop: cs.paddingTop,
         safeBottom: cs.paddingBottom,
-        rootH: rootRect ? `${Math.round(rootRect.height)} (bot ${Math.round(rootRect.bottom)})` : '?',
-        bodyPos: getComputedStyle(document.body).position,
+        vh: String(Math.round(pVh.getBoundingClientRect().height)),
+        dvh: String(Math.round(pDvh.getBoundingClientRect().height)),
+        lvh: String(Math.round(pLvh.getBoundingClientRect().height)),
+        svh: String(Math.round(pSvh.getBoundingClientRect().height)),
       })
     }
     read()
     const id = setInterval(read, 500)
-    return () => { clearInterval(id); probe.remove() }
+    return () => {
+      clearInterval(id)
+      ;[probe, pVh, pDvh, pLvh, pSvh].forEach(el => el.remove())
+    }
   }, [])
 
   return (
@@ -42,7 +59,7 @@ export function DebugOverlay() {
       fontSize: 13, fontFamily: 'monospace', padding: 14, borderRadius: 10,
       lineHeight: 1.7, pointerEvents: 'none',
     }}>
-      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.5</div>
+      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.6</div>
       {Object.entries(info).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
     </div>
   )
