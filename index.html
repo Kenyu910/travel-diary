@@ -10,10 +10,12 @@
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- "default" makes iOS reserve the status-bar / dynamic-island area at the
-         OS level, so content never opens tucked underneath it. "black-translucent"
-         let content slide under the island when safe-area insets were 0 on launch. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- black-translucent makes the web view fill the WHOLE screen (incl. the
+         status-bar / home-indicator areas); we pad content with the
+         safe-area-inset-* values. "default" shrank the layout viewport ~62px
+         below the screen, leaving a gap under the bottom tab bar. Rubber-band
+         scrolling is prevented by locking html/body (position:fixed) in CSS. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="旅日記" />
     <link rel="apple-touch-icon" href="/icon.jpg" />
 
