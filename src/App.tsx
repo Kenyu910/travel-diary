@@ -19,6 +19,7 @@ import { useEntries } from './store'
 import { useSettings } from './settings'
 import { getCachedGeo } from './utils/geoCache'
 import { todayLocalISO } from './utils/localDate'
+import { DebugOverlay } from './components/DebugOverlay'
 import type { Entry } from './types'
 
 type Sheet = 'form' | 'detail' | 'edit' | 'poi-history' | null
@@ -272,6 +273,7 @@ function AppContent() {
     // position:relative is CRITICAL — without it, the absolute map layer positions
     // relative to the viewport (not this container), causing a large gap.
     <div className="relative flex flex-col h-full bg-[#fdf6fb]">
+      <DebugOverlay />
       {/* Map layer — always mounted, invisible when non-map tab */}
       <div className={`absolute inset-0 bottom-[calc(max(env(safe-area-inset-bottom,0px)-6px,10px)+52px)] ${tab !== 'map' ? 'invisible' : ''}`}>
         <MapErrorBoundary>
