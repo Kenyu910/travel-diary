@@ -115,6 +115,16 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.4.1',
+    date: '2026-06-22',
+    title: 'iOS全画面レイアウトの修正',
+    changes: [
+      '起動時の画面ずれ・背景ずれ・下タブの隙間を修正（実ビューポート基準でレイアウト）',
+      '地図を画面全体に表示しつつ、下タブを最下部に最適配置',
+      'Google Mapボタンで空白画面が残る不具合を修正',
+    ],
+  },
+  {
     version: '2.3.1',
     date: '2026-06-21',
     title: 'バグ修正',
