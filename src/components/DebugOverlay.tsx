@@ -26,6 +26,11 @@ export function DebugOverlay() {
     const pLvh = mkUnit('100lvh')
     const pSvh = mkUnit('100svh')
 
+    // Probe: where does position:fixed; bottom:0 actually land on screen?
+    const pFixedBot = document.createElement('div')
+    pFixedBot.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:4px;visibility:hidden;pointer-events:none;'
+    document.body.appendChild(pFixedBot)
+
     const read = () => {
       const cs = getComputedStyle(probe)
       const root = document.getElementById('root')
@@ -44,14 +49,14 @@ export function DebugOverlay() {
         navH: navRect ? `${Math.round(navRect.height)}` : '?',
         navTopBot: navRect ? `${Math.round(navRect.top)}-${Math.round(navRect.bottom)}` : '?',
         labelY: labelRect ? `${Math.round(labelRect.top)}-${Math.round(labelRect.bottom)}` : 'NO LABEL',
-        labelTxt: label?.textContent || '(none)',
+        fixedBot0: `${Math.round(pFixedBot.getBoundingClientRect().bottom)}`,
       })
     }
     read()
     const id = setInterval(read, 500)
     return () => {
       clearInterval(id)
-      ;[probe, pVh, pDvh, pLvh, pSvh].forEach(el => el.remove())
+      ;[probe, pVh, pDvh, pLvh, pSvh, pFixedBot].forEach(el => el.remove())
     }
   }, [])
 
@@ -62,7 +67,7 @@ export function DebugOverlay() {
       fontSize: 13, fontFamily: 'monospace', padding: 14, borderRadius: 10,
       lineHeight: 1.7, pointerEvents: 'none',
     }}>
-      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.1e</div>
+      <div style={{ color: '#fff', fontWeight: 700, marginBottom: 6 }}>DEBUG v2.3.1f</div>
       {Object.entries(info).map(([k, v]) => <div key={k}>{k}: {v}</div>)}
     </div>
   )
