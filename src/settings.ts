@@ -115,6 +115,15 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.4.2',
+    date: '2026-06-22',
+    title: '写真ビューア・場所検索の改善',
+    changes: [
+      '写真を全画面表示すると閉じられなくなる不具合を修正（×ボタンを安全領域の下へ移動）',
+      '写真追加時の場所名検索を、写真の位置情報の周辺で検索するように改善',
+    ],
+  },
+  {
     version: '2.4.1',
     date: '2026-06-22',
     title: 'iOS全画面レイアウトの修正',

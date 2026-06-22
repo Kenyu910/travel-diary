@@ -22,16 +22,21 @@ export function Lightbox({ photos, index, onClose, onPrev, onNext }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={onClose}>
-      {/* Close */}
+      {/* Close — offset below the safe area so it isn't hidden under the
+          status bar / Dynamic Island (where it became untappable). */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"
+        className="absolute right-4 z-10 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
       >
         <X size={20} />
       </button>
 
       {/* Counter */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
+      <div
+        className="absolute left-1/2 -translate-x-1/2 text-white/70 text-sm"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
+      >
         {index + 1} / {photos.length}
       </div>
 

@@ -1,7 +1,7 @@
 {
   "name": "travel-diary",
   "private": true,
-  "version": "2.4.1a",
+  "version": "2.4.2",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -19,8 +19,14 @@ type Props = {
   defaultPlaceName?: string
 }
 
-function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: string, lat?: number, lng?: number) => void }) {
+function PlaceNameInput({ value, onChange, biasLocation }: {
+  value: string
+  onChange: (v: string, lat?: number, lng?: number) => void
+  /** Prefer this location (e.g. the added photo's GPS) for search bias */
+  biasLocation?: { lat: number; lng: number } | null
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const acRef = useRef<any>(null)
   const placesLib = useMapsLibrary('places')
   const win = window as any
 
@@ -36,6 +42,7 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
       fields: ['geometry', 'name', 'formatted_address'],
       componentRestrictions: { country: 'jp' },
     })
+    acRef.current = ac
     const listener = ac.addListener('place_changed', () => {
       const place = ac.getPlace()
       const loc = place.geometry?.location
@@ -43,20 +50,27 @@ function PlaceNameInput({ value, onChange }: { value: string; onChange: (v: stri
         memoizedOnChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
       }
     })
-    // Bias toward current position — use ONLY the cached location so we never
-    // trigger a permission prompt just by opening the form.
-    const cached = getCachedGeo()
-    if (cached) {
-      const d = 0.05
-      ac.setBounds(new G.LatLngBounds(
-        new G.LatLng(cached.lat - d, cached.lng - d),
-        new G.LatLng(cached.lat + d, cached.lng + d)
-      ))
-    }
     return () => {
       try { G?.event?.removeListener(listener) } catch { /* ignore */ }
+      acRef.current = null
     }
   }, [placesLib, memoizedOnChange])
+
+  // Bias search toward the photo's GPS when available, otherwise the cached
+  // location. Re-applies when the photo location arrives. Uses cache only — no
+  // permission prompt just from opening the form.
+  useEffect(() => {
+    const ac = acRef.current
+    const G = win.google?.maps
+    if (!ac || !G) return
+    const loc = biasLocation ?? getCachedGeo()
+    if (!loc) return
+    const d = 0.05
+    ac.setBounds(new G.LatLngBounds(
+      new G.LatLng(loc.lat - d, loc.lng - d),
+      new G.LatLng(loc.lat + d, loc.lng + d)
+    ))
+  }, [biasLocation, placesLib])
 
   return (
     <div className="relative">
@@ -112,6 +126,8 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   type PlaceSuggestion = { name: string; lat: number; lng: number; vicinity: string; d: number }
   const [photoPlaces, setPhotoPlaces] = useState<PlaceSuggestion[]>([])
   const [photoPlacesLoading, setPhotoPlacesLoading] = useState(false)
+  // The added photo's GPS — used to bias the place-name search to that area
+  const [photoGps, setPhotoGps] = useState<{ lat: number; lng: number } | null>(null)
   const placesLib = useMapsLibrary('places')
   const placesDivRef = useRef<HTMLDivElement | null>(null)
 
@@ -203,6 +219,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         const meta = await extractPhotoMeta(file)
         if (!meta) continue
         if (!gotPlace && meta.lat !== undefined && meta.lng !== undefined) {
+          setPhotoGps({ lat: meta.lat, lng: meta.lng })  // bias place search to the photo
           suggestPlacesFromGps(meta.lat, meta.lng); gotPlace = true
         }
         if (!gotDate && meta.date && !initial && !dateEditedRef.current) {
@@ -280,6 +297,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         </label>
         <PlaceNameInput
           value={placeName}
+          biasLocation={photoGps}
           onChange={(v, newLat, newLng) => {
             // Mark as manually edited so GPS auto-fill doesn't overwrite
             setPlaceNameEdited(true)
