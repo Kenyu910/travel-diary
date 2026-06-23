@@ -248,12 +248,10 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
 
   const placesService = useMemo(() => placesLib && map ? new placesLib.PlacesService(map) : null, [placesLib, map])
 
-  const searchNearby = (type: 'restaurant' | 'cafe') => {
-    if (foodMode === type) {
-      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null); return
-    }
+  // Run the actual nearby search for a food type (no toggling)
+  const runFoodSearch = (type: 'restaurant' | 'cafe') => {
     if (!placesService || !map) return
-    setFoodMode(type); setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null)
+    setLoadingFood(true); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null)
     const center = map.getCenter()
     if (!center) { setLoadingFood(false); return }
     placesService.nearbySearch(
@@ -272,6 +270,27 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       },
     )
   }
+
+  const searchNearby = (type: 'restaurant' | 'cafe') => {
+    if (foodMode === type) {
+      setFoodMode('none'); setFoodPlaces([]); setSelectedFood(null); setNativePoi(null); return
+    }
+    if (!placesService || !map) return
+    setFoodMode(type)
+    runFoodSearch(type)
+  }
+
+  // Restore food markers once on launch if a food mode was persisted (the
+  // button showed active but no pins appeared until re-toggled).
+  const foodRestoredRef = useRef(false)
+  useEffect(() => {
+    if (foodRestoredRef.current) return
+    if (foodMode === 'none') return
+    if (!placesService || !map) return
+    foodRestoredRef.current = true
+    runFoodSearch(foodMode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placesService, map, foodMode])
 
   const visibleEntries = useMemo(() => entries.filter(e => {
     if (filterTag && !e.tags.includes(filterTag)) return false

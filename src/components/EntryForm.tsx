@@ -94,6 +94,7 @@ function PlaceNameInput({ value, onChange, biasLocation }: {
         value={value}
         onChange={e => handleInput(e.target.value)}
         onFocus={() => { if (results.length) setShowDropdown(true) }}
+        onBlur={() => { setTimeout(() => setShowDropdown(false), 120) }}
         className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-8 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
         placeholder="場所を検索または入力..."
         autoComplete="off"
@@ -336,7 +337,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
         </label>
         <PlaceNameInput
           value={placeName}
-          biasLocation={photoGps}
+          biasLocation={photoGps ?? { lat: formLat, lng: formLng }}
           onChange={(v, newLat, newLng) => {
             // Mark as manually edited so GPS auto-fill doesn't overwrite
             setPlaceNameEdited(true)

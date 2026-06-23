@@ -27,6 +27,8 @@ export function loadEntries(): Entry[] {
 export function useEntries() {
   const [entries, setEntries] = useState<Entry[]>([])
   const loadedRef = useRef(false)
+  // Skip the one redundant persist that fires right after the initial load
+  const skipNextPersistRef = useRef(false)
 
   // Initial load from IndexedDB, with one-time migration from the old
   // localStorage store. Photos live inline as data URLs, which used to blow the
@@ -42,7 +44,10 @@ export function useEntries() {
           if (legacy.length) await idbSet(ENTRIES_KEY, legacy)
           data = legacy
         }
-        if (!cancelled) setEntries(Array.isArray(data) ? data : [])
+        if (!cancelled) {
+          skipNextPersistRef.current = true  // don't immediately write the just-loaded data back
+          setEntries(Array.isArray(data) ? data : [])
+        }
       } catch {
         // IndexedDB unavailable (e.g. private mode) — fall back to localStorage
         if (!cancelled) setEntries(loadEntries())
@@ -56,6 +61,7 @@ export function useEntries() {
   // Persist to IndexedDB whenever entries change (after the initial load).
   useEffect(() => {
     if (!loadedRef.current) return
+    if (skipNextPersistRef.current) { skipNextPersistRef.current = false; return }
     idbSet(ENTRIES_KEY, entries).catch(e => {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         showQuotaError()
