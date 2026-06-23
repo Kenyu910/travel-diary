@@ -19,6 +19,8 @@ type Props = {
   defaultPlaceName?: string
 }
 
+type PlaceHit = { name: string; lat: number; lng: number; vicinity: string }
+
 function PlaceNameInput({ value, onChange, biasLocation }: {
   value: string
   onChange: (v: string, lat?: number, lng?: number) => void
@@ -26,57 +28,100 @@ function PlaceNameInput({ value, onChange, biasLocation }: {
   biasLocation?: { lat: number; lng: number } | null
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const serviceDivRef = useRef<HTMLDivElement | null>(null)
   const placesLib = useMapsLibrary('places')
-  const win = window as any
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [results, setResults] = useState<PlaceHit[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searching, setSearching] = useState(false)
 
-  // Memoize onChange to prevent listener accumulation on every render
-  const memoizedOnChange = useCallback(onChange, [onChange])
-
-  useEffect(() => {
-    if (!placesLib || !inputRef.current) return
-    const G = win.google?.maps
-    if (!G) return
-
-    // Bias toward the photo's GPS when available, else the cached location.
-    // Bounds are passed at construction (more reliable than setBounds) so the
-    // suggestions are pulled toward where the photo was taken.
+  // Text search biased to the photo's location (or cached), ranked nearest-first.
+  const runSearch = (q: string) => {
+    const query = q.trim()
+    if (!query || !placesLib || !serviceDivRef.current) { setResults([]); return }
+    const G = (window as any).google?.maps
     const bias = biasLocation ?? getCachedGeo()
-    const opts: any = {
-      fields: ['geometry', 'name', 'formatted_address'],
-      componentRestrictions: { country: 'jp' },
+    const service = new placesLib.PlacesService(serviceDivRef.current)
+    const req: any = { query }
+    if (bias && G) {
+      req.location = new G.LatLng(bias.lat, bias.lng)
+      req.radius = 3000  // search around the photo's area
     }
-    if (bias) {
-      const d = 0.05
-      opts.bounds = new G.LatLngBounds(
-        new G.LatLng(bias.lat - d, bias.lng - d),
-        new G.LatLng(bias.lat + d, bias.lng + d),
-      )
-    }
-    const ac = new placesLib.Autocomplete(inputRef.current, opts)
-    const listener = ac.addListener('place_changed', () => {
-      const place = ac.getPlace()
-      const loc = place.geometry?.location
-      if (loc) {
-        memoizedOnChange(place.name || place.formatted_address || '', loc.lat(), loc.lng())
+    setSearching(true)
+    service.textSearch(req, (res: any, status: any) => {
+      setSearching(false)
+      if (status === 'OK' && res?.length) {
+        const hits: PlaceHit[] = res.slice(0, 10).map((p: any) => ({
+          name: p.name,
+          lat: p.geometry.location.lat(),
+          lng: p.geometry.location.lng(),
+          vicinity: p.formatted_address || p.vicinity || '',
+        }))
+        // Sort nearest-first relative to the bias point
+        if (bias) {
+          hits.sort((a, b) =>
+            ((a.lat - bias.lat) ** 2 + (a.lng - bias.lng) ** 2) -
+            ((b.lat - bias.lat) ** 2 + (b.lng - bias.lng) ** 2))
+        }
+        setResults(hits.slice(0, 8))
+        setShowDropdown(true)
+      } else {
+        setResults([])
       }
     })
-    return () => {
-      try { G?.event?.removeListener(listener) } catch { /* ignore */ }
-    }
-    // Recreate with fresh bounds when the photo location arrives.
-  }, [placesLib, memoizedOnChange, biasLocation])
+  }
+
+  const handleInput = (v: string) => {
+    onChange(v) // keep the typed text (and mark edited in parent)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => runSearch(v), 350)
+  }
+
+  const pick = (hit: PlaceHit) => {
+    onChange(hit.name, hit.lat, hit.lng)
+    setShowDropdown(false)
+    setResults([])
+    inputRef.current?.blur()
+  }
+
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   return (
     <div className="relative">
-      <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
       <input
         ref={inputRef}
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => handleInput(e.target.value)}
+        onFocus={() => { if (results.length) setShowDropdown(true) }}
         className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-8 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
         placeholder="場所を検索または入力..."
         autoComplete="off"
       />
+      {/* Hidden host for PlacesService */}
+      <div ref={serviceDivRef} className="hidden" />
+
+      {showDropdown && (searching || results.length > 0) && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+          {searching && results.length === 0 && (
+            <div className="px-3 py-2.5 text-xs text-gray-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> 検索中...</div>
+          )}
+          {results.map((r, i) => (
+            <button
+              key={`${r.name}-${i}`}
+              type="button"
+              onPointerDown={e => { e.preventDefault(); pick(r) }}
+              className="w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-gray-50 last:border-0 active:bg-gray-50"
+            >
+              <MapPin size={13} className="text-pink-400 flex-shrink-0" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm text-gray-800 truncate">{r.name}</span>
+                {r.vicinity && <span className="block text-[11px] text-gray-400 truncate">{r.vicinity}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.4.3',
+    date: '2026-06-22',
+    title: '場所名検索を写真の近辺に対応',
+    changes: [
+      '場所名の検索を、写真の位置情報の周辺で「近い順」に候補表示する方式に変更',
+    ],
+  },
+  {
     version: '2.4.2',
     date: '2026-06-22',
     title: '写真ビューア・場所検索の改善',
