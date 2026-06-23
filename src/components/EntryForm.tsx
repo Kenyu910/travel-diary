@@ -26,7 +26,6 @@ function PlaceNameInput({ value, onChange, biasLocation }: {
   biasLocation?: { lat: number; lng: number } | null
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const acRef = useRef<any>(null)
   const placesLib = useMapsLibrary('places')
   const win = window as any
 
@@ -38,11 +37,22 @@ function PlaceNameInput({ value, onChange, biasLocation }: {
     const G = win.google?.maps
     if (!G) return
 
-    const ac = new placesLib.Autocomplete(inputRef.current, {
+    // Bias toward the photo's GPS when available, else the cached location.
+    // Bounds are passed at construction (more reliable than setBounds) so the
+    // suggestions are pulled toward where the photo was taken.
+    const bias = biasLocation ?? getCachedGeo()
+    const opts: any = {
       fields: ['geometry', 'name', 'formatted_address'],
       componentRestrictions: { country: 'jp' },
-    })
-    acRef.current = ac
+    }
+    if (bias) {
+      const d = 0.05
+      opts.bounds = new G.LatLngBounds(
+        new G.LatLng(bias.lat - d, bias.lng - d),
+        new G.LatLng(bias.lat + d, bias.lng + d),
+      )
+    }
+    const ac = new placesLib.Autocomplete(inputRef.current, opts)
     const listener = ac.addListener('place_changed', () => {
       const place = ac.getPlace()
       const loc = place.geometry?.location
@@ -52,25 +62,9 @@ function PlaceNameInput({ value, onChange, biasLocation }: {
     })
     return () => {
       try { G?.event?.removeListener(listener) } catch { /* ignore */ }
-      acRef.current = null
     }
-  }, [placesLib, memoizedOnChange])
-
-  // Bias search toward the photo's GPS when available, otherwise the cached
-  // location. Re-applies when the photo location arrives. Uses cache only — no
-  // permission prompt just from opening the form.
-  useEffect(() => {
-    const ac = acRef.current
-    const G = win.google?.maps
-    if (!ac || !G) return
-    const loc = biasLocation ?? getCachedGeo()
-    if (!loc) return
-    const d = 0.05
-    ac.setBounds(new G.LatLngBounds(
-      new G.LatLng(loc.lat - d, loc.lng - d),
-      new G.LatLng(loc.lat + d, loc.lng + d)
-    ))
-  }, [biasLocation, placesLib])
+    // Recreate with fresh bounds when the photo location arrives.
+  }, [placesLib, memoizedOnChange, biasLocation])
 
   return (
     <div className="relative">
