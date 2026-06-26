@@ -45,12 +45,18 @@ export function useEntries() {
           data = legacy
         }
         if (!cancelled) {
-          skipNextPersistRef.current = true  // don't immediately write the just-loaded data back
-          setEntries(Array.isArray(data) ? data : [])
+          const loaded = Array.isArray(data) ? data : []
+          setEntries(prev => {
+            // C-2: if the user already added entries before this async load
+            // finished, keep them instead of clobbering with the snapshot.
+            if (prev.length > 0) return prev
+            skipNextPersistRef.current = true  // don't immediately write the just-loaded data back
+            return loaded
+          })
         }
       } catch {
         // IndexedDB unavailable (e.g. private mode) — fall back to localStorage
-        if (!cancelled) setEntries(loadEntries())
+        if (!cancelled) setEntries(prev => (prev.length > 0 ? prev : loadEntries()))
       } finally {
         if (!cancelled) loadedRef.current = true
       }
@@ -65,8 +71,17 @@ export function useEntries() {
     idbSet(ENTRIES_KEY, entries).catch(e => {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         showQuotaError()
-      } else if (import.meta.env.DEV) {
-        console.error('Failed to save entries to IndexedDB:', e)
+        return
+      }
+      if (import.meta.env.DEV) {
+        console.error('Failed to save entries to IndexedDB, falling back to localStorage:', e)
+      }
+      // C-1/H-2: IndexedDB unavailable (private mode, blocked) — persist to
+      // localStorage so added records survive a reload instead of vanishing.
+      try {
+        localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
+      } catch (le) {
+        if (le instanceof DOMException && le.name === 'QuotaExceededError') showQuotaError()
       }
     })
   }, [entries])
@@ -88,7 +103,11 @@ const DEFAULT_TAGS = ['グルメ', 'カフェ', '旅行', '観光', '買い物',
 export function loadGlobalTags(): string[] {
   try {
     const raw = localStorage.getItem(TAGS_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      // L-2: guard against corrupted non-array data crashing tags.includes/map
+      if (Array.isArray(parsed)) return parsed.filter((t): t is string => typeof t === 'string')
+    }
     // First time: seed with default tags
     localStorage.setItem(TAGS_KEY, JSON.stringify(DEFAULT_TAGS))
     return DEFAULT_TAGS

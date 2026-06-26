@@ -69,7 +69,11 @@ function exifDateToISO(s: string): string | undefined {
   const m = s.match(/^(\d{4}):(\d{2}):(\d{2})/)
   if (!m) return undefined
   const [, y, mo, d] = m
-  if (mo < '01' || mo > '12' || d < '01' || d > '31') return undefined
+  // M-2: reject impossible dates (e.g. 2024:02:31) — a bad date makes
+  // <input type="date"> blank out and silently saves an empty date.
+  const yi = Number(y), moi = Number(mo), di = Number(d)
+  const dt = new Date(yi, moi - 1, di)
+  if (dt.getFullYear() !== yi || dt.getMonth() !== moi - 1 || dt.getDate() !== di) return undefined
   return `${y}-${mo}-${d}`
 }
 

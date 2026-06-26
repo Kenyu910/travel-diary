@@ -219,6 +219,12 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
     }
+    const stopWatch = () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+    }
     const id = navigator.geolocation.watchPosition(
       p => {
         const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
@@ -228,6 +234,10 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
       { enableHighAccuracy: true, maximumAge: 10000 },
     )
     watchIdRef.current = id
+    // H-1: MapView is always mounted, so the unmount cleanup never fires.
+    // Auto-stop the watch after 30s so GPS doesn't run (and drain battery /
+    // keep the iOS location indicator on) indefinitely.
+    setTimeout(stopWatch, 30000)
 
     const cached = getCachedGeo()
     if (cached) map?.panTo(cached)

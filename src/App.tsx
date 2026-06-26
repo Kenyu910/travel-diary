@@ -58,22 +58,24 @@ function AppContent() {
   const geocodingLib = useMapsLibrary('geocoding')
   const geocoder = useMemo(() => geocodingLib ? new geocodingLib.Geocoder() : null, [geocodingLib])
 
+  const geocodeGenRef = useRef(0)
   const reverseGeocode = useCallback((lat: number, lng: number, cb: (name: string) => void) => {
     if (!geocoder) return
-    let isMounted = true
+    // M-1: callers can't unsubscribe, so use a generation counter — only the
+    // latest request's result is applied. Otherwise a slow earlier lookup can
+    // overwrite a newer place name (last-wins not guaranteed by the API).
+    const gen = ++geocodeGenRef.current
     geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-      // Abort if component unmounted
-      if (!isMounted) return
+      if (gen !== geocodeGenRef.current) return  // a newer request superseded this one
       if (status === 'OK' && results?.[0]) {
         const comps = results[0].address_components as any[]
         const find = (...types: string[]) => comps?.find((c: any) => types.some(t => c.types.includes(t)))?.long_name || ''
         const locality = find('sublocality_level_2') || find('sublocality_level_1') || find('locality')
         const subloc = find('premise') || find('route')
-        cb(subloc ? `${locality} ${subloc}`.trim() : locality)
+        const name = subloc ? `${locality} ${subloc}`.trim() : locality
+        if (name) cb(name)  // M-3: don't wipe an existing name with an empty result
       }
     })
-    // Cleanup function to abort geocoding if component unmounts
-    return () => { isMounted = false }
   }, [geocoder])
 
   const closeSheet = useCallback(() => {
