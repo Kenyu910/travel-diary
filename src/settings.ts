@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.4.6',
+    date: '2026-06-27',
+    title: '容量超過時の保存挙動を修正',
+    changes: [
+      'ストレージ容量超過で保存に失敗した記録が、画面上は保存済みに見えてリロードで消える不具合を修正（保存失敗時は直前の保存済み状態に戻して表示と実体を一致）',
+    ],
+  },
+  {
     version: '2.4.5',
     date: '2026-06-27',
     title: '日付・件数の不整合を修正',

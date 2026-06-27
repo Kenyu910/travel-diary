@@ -29,6 +29,10 @@ export function useEntries() {
   const loadedRef = useRef(false)
   // Skip the one redundant persist that fires right after the initial load
   const skipNextPersistRef = useRef(false)
+  // Last state that was actually persisted, so we can roll back the in-memory
+  // entries if a save fails (H-2: otherwise the UI shows a "saved" record that
+  // silently vanishes on reload).
+  const lastPersistedRef = useRef<Entry[] | null>(null)
 
   // Initial load from IndexedDB, with one-time migration from the old
   // localStorage store. Photos live inline as data URLs, which used to blow the
@@ -51,6 +55,7 @@ export function useEntries() {
             // finished, keep them instead of clobbering with the snapshot.
             if (prev.length > 0) return prev
             skipNextPersistRef.current = true  // don't immediately write the just-loaded data back
+            lastPersistedRef.current = loaded
             return loaded
           })
         }
@@ -67,10 +72,18 @@ export function useEntries() {
   // Persist to IndexedDB whenever entries change (after the initial load).
   useEffect(() => {
     if (!loadedRef.current) return
-    if (skipNextPersistRef.current) { skipNextPersistRef.current = false; return }
-    idbSet(ENTRIES_KEY, entries).catch(e => {
+    if (skipNextPersistRef.current) { skipNextPersistRef.current = false; lastPersistedRef.current = entries; return }
+    idbSet(ENTRIES_KEY, entries)
+      .then(() => { lastPersistedRef.current = entries })
+      .catch(e => {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         showQuotaError()
+        // H-2: storage is full — this change could not be saved. Roll the
+        // in-memory state back to what's actually on disk so the UI doesn't
+        // keep showing a record that will be gone after reload.
+        if (lastPersistedRef.current && lastPersistedRef.current !== entries) {
+          setEntries(lastPersistedRef.current)
+        }
         return
       }
       if (import.meta.env.DEV) {
@@ -80,8 +93,14 @@ export function useEntries() {
       // localStorage so added records survive a reload instead of vanishing.
       try {
         localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries))
+        lastPersistedRef.current = entries
       } catch (le) {
-        if (le instanceof DOMException && le.name === 'QuotaExceededError') showQuotaError()
+        if (le instanceof DOMException && le.name === 'QuotaExceededError') {
+          showQuotaError()
+          if (lastPersistedRef.current && lastPersistedRef.current !== entries) {
+            setEntries(lastPersistedRef.current)
+          }
+        }
       }
     })
   }, [entries])
