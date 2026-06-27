@@ -319,12 +319,17 @@ export function MapView({ entries, selectedEntryId, onSelectEntry, onMapClick, o
   // turn into an unreadable pile of overlapping markers.
   const diaryClusters = useMemo(() => {
     if (zoom >= CLUSTER_MAX_ZOOM) return null  // show individual pins when zoomed in
-    const cell = 84.4 / Math.pow(2, zoom)      // ~60px grid cell, in degrees
+    // ~60px grid cell, in degrees. Longitude maps linearly to screen x, but a
+    // degree of latitude covers more screen height than a degree of longitude
+    // (by 1/cos(lat)). L-1: divide the latitude cell by cos(lat) so the grid is
+    // visually square instead of stretched ~20% N-S at Japan's latitudes.
+    const lngCell = 84.4 / Math.pow(2, zoom)
     // Plain object as the bucket map — `Map` here refers to the imported
     // @vis.gl <Map> component, so we can't use the JS Map constructor.
     const cells: Record<string, { entries: Entry[]; sumLat: number; sumLng: number }> = {}
     for (const e of diaryEntries) {
-      const key = `${Math.floor(e.lat / cell)}_${Math.floor(e.lng / cell)}`
+      const latCell = lngCell / Math.max(0.01, Math.cos(e.lat * Math.PI / 180))
+      const key = `${Math.floor(e.lat / latCell)}_${Math.floor(e.lng / lngCell)}`
       let c = cells[key]
       if (!c) { c = { entries: [], sumLat: 0, sumLng: 0 }; cells[key] = c }
       c.entries.push(e); c.sumLat += e.lat; c.sumLng += e.lng

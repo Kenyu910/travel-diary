@@ -115,6 +115,14 @@ export const TAG_PRESET_COLORS = [
 
 export const CHANGELOG = [
   {
+    version: '2.4.7',
+    date: '2026-06-27',
+    title: 'マップのピン集約の見た目を改善',
+    changes: [
+      'ズームアウト時のピン集約グリッドに緯度補正を追加し、南北に約20%間延びしていたまとまりを正方形に近づけて自然に表示',
+    ],
+  },
+  {
     version: '2.4.6',
     date: '2026-06-27',
     title: '容量超過時の保存挙動を修正',
