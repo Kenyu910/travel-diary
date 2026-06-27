@@ -291,13 +291,16 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    // The date field can be cleared to "" — fall back to today so the entry
+    // never disappears from the calendar / sort with an empty date.
+    const finalDate = date || todayLocalISO()
     // Auto-title if empty: use placeName, date, or default
     const finalTitle = title.trim()
       || placeName.trim()
-      || (wantToVisit ? '行ってみたい場所' : `記録 ${date}`)
+      || (wantToVisit ? '行ってみたい場所' : `記録 ${finalDate}`)
     onSave({
       id: initial?.id ?? uuidv4(),
-      title: finalTitle, body, date, lat: formLat, lng: formLng,
+      title: finalTitle, body, date: finalDate, lat: formLat, lng: formLng,
       placeName, tags: selectedTags, photos, rating, wantToVisit,
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })

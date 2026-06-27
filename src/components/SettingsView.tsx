@@ -153,9 +153,12 @@ export function SettingsView({ settings, update, entries, onImport, onExport, on
     e.target.value = ''
   }
 
-  const totalEntries = entries.length
-  const totalTags = new Set(entries.flatMap(e => e.tags)).size
-  const totalPhotos = entries.reduce((s, e) => s + e.photos.length, 0)
+  // Count actual visited records as "思い出" — 行きたい(wishlist) items are
+  // plans, kept separate (matches the list tab and stats which exclude them).
+  const diaryEntries = entries.filter(e => !e.wantToVisit)
+  const totalEntries = diaryEntries.length
+  const totalTags = new Set(diaryEntries.flatMap(e => e.tags)).size
+  const totalPhotos = diaryEntries.reduce((s, e) => s + e.photos.length, 0)
   const storageKB = Math.round(JSON.stringify(entries).length / 1024)
   const displayName = settings.userName || 'ゲスト'
 

@@ -29,9 +29,13 @@ export function CalendarView({ entries, onSelectEntry }: Props) {
     else setMonth(m => m + 1)
   }
 
+  // Calendar shows actual visited records only — 行きたい(wishlist) items are
+  // plans, not memories, and are kept separate everywhere else in the app.
+  const diaryEntries = entries.filter(e => !e.wantToVisit && e.date)
+
   // Build date → entries map
   const entryMap = new Map<string, Entry[]>()
-  entries.forEach(e => {
+  diaryEntries.forEach(e => {
     if (!entryMap.has(e.date)) entryMap.set(e.date, [])
     entryMap.get(e.date)!.push(e)
   })
@@ -50,7 +54,7 @@ export function CalendarView({ entries, onSelectEntry }: Props) {
 
   // Entries in this month
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
-  const monthEntries = entries
+  const monthEntries = diaryEntries
     .filter(e => e.date.startsWith(monthPrefix))
     .sort((a, b) => b.date.localeCompare(a.date))
   const selectedEntries = selectedDate ? (entryMap.get(selectedDate) ?? []) : monthEntries
