@@ -376,7 +376,7 @@ function AppContent() {
       {/* Flex spacer for map tab (non-map tabs use flex-1 content div) */}
       {tab === 'map' && <div className="flex-1" />}
 
-      <BottomNav active={tab} onChange={handleTabChange} entryCount={entries.length} />
+      <BottomNav active={tab} onChange={handleTabChange} entryCount={entries.filter(e => !e.wantToVisit).length} />
 
       <BottomSheet open={sheet !== null} onClose={closeSheet} title={sheetTitle}>
         {sheet === 'form' && clickedPos && (

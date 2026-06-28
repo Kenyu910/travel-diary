@@ -202,8 +202,10 @@ export function PlacesSearch({ onPlaceSelected, mapRef }: Props) {
               {nearbyResults.map(r => (
                 <button
                   key={r.placeId}
+                  // onPointerDown (not onClick): fires before the input blur on
+                  // mobile so the tap isn't swallowed. Using only this avoids the
+                  // double onPlaceSelected that onPointerDown + onClick caused.
                   onPointerDown={e => { e.preventDefault(); handleSelectResult(r) }}
-                  onClick={() => handleSelectResult(r)}
                   className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 border-b border-gray-50 last:border-0 active:bg-pink-50 transition-colors"
                 >
                   <MapPin size={13} className="text-pink-400 flex-shrink-0 mt-0.5" />
