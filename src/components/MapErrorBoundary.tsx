@@ -23,11 +23,15 @@ export class MapErrorBoundary extends Component<{ children: ReactNode }, State> 
           <p className="text-xs text-red-400 bg-red-50 rounded-xl p-3 mt-2 text-left break-all">
             {this.state.error.message}
           </p>
+          {/* Reload only — map failures are almost always an API key / network /
+              Maps SDK issue, which clearing storage does not fix. The records
+              live in IndexedDB anyway, so the old localStorage.clear() merely
+              wiped settings/tags/colors (and the legacy backup) for nothing. */}
           <button
-            onClick={() => { localStorage.clear(); window.location.reload() }}
+            onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-pink-400 text-white text-sm rounded-2xl"
           >
-            データをリセットして再起動
+            再読み込み
           </button>
         </div>
       )
