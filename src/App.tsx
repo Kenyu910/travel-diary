@@ -245,6 +245,7 @@ function AppContent() {
         createdAt: typeof e.createdAt === 'string' ? e.createdAt : new Date().toISOString(),
         rating: typeof e.rating === 'number' && Number.isFinite(e.rating) ? e.rating : undefined,
         wantToVisit: e.wantToVisit === true,
+        revisit: typeof e.revisit === 'number' && Number.isFinite(e.revisit) ? e.revisit : undefined,
       }))
     setEntries([...entries, ...newEntries].sort((a, b) => b.date.localeCompare(a.date)))
   }

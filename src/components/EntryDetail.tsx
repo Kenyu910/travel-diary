@@ -88,6 +88,14 @@ export function EntryDetail({ entry, onEdit, onDelete, onClose: _, onFlyTo, onMa
           <StarRating value={entry.rating!} readonly size={20} />
         )}
 
+        {/* また行きたい度 */}
+        {(entry.revisit ?? 0) > 0 && (
+          <div className="flex items-center gap-2">
+            <StarRating value={entry.revisit!} readonly size={20} variant="heart" />
+            <span className="text-xs text-rose-400">また行きたい</span>
+          </div>
+        )}
+
         {/* Tags */}
         {entry.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 items-center">

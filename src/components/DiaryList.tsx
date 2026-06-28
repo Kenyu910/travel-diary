@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, X, Upload, LayoutGrid, List, Clock, CalendarDays, MapPin, ChevronRight, BookOpen, Bookmark } from 'lucide-react'
+import { Search, X, Upload, LayoutGrid, List, Clock, CalendarDays, MapPin, ChevronRight, BookOpen, Bookmark, Trophy, Heart, Star } from 'lucide-react'
 import type { Entry } from '../types'
 import type { AppSettings } from '../settings'
 
@@ -17,7 +17,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState(settings.defaultSort)
   const [listStyle, setListStyle] = useState(settings.listStyle)
-  const [diaryMode, setDiaryMode] = useState<'diary' | 'wishlist'>('diary')
+  const [diaryMode, setDiaryMode] = useState<'diary' | 'wishlist' | 'ranking'>('diary')
+  const isRanking = diaryMode === 'ranking'
+  // Ranking metric: taste ⭐️ or また行きたい度 ♡
+  const [rankBy, setRankBy] = useState<'rating' | 'revisit'>('rating')
+  const rankScore = (e: Entry) => (rankBy === 'rating' ? e.rating : e.revisit) ?? 0
 
   const handleSortChange = (newSort: typeof sort) => {
     setSort(newSort)
@@ -29,9 +33,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
     onUpdateSettings?.({ listStyle: newStyle })
   }
 
-  const modeEntries = diaryMode === 'diary'
-    ? entries.filter(e => !e.wantToVisit)
-    : entries.filter(e => e.wantToVisit)
+  const modeEntries = diaryMode === 'wishlist'
+    ? entries.filter(e => e.wantToVisit)
+    : isRanking
+      ? entries.filter(e => !e.wantToVisit && rankScore(e) > 0)  // only entries scored on the active metric
+      : entries.filter(e => !e.wantToVisit)
 
   const allTags = Array.from(new Set(modeEntries.flatMap(e => e.tags))).sort()
 
@@ -47,10 +53,32 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
         e.tags.some(t => t.toLowerCase().includes(q))
       )
     })
-    .sort((a, b) => sort === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
+    .sort((a, b) => isRanking
+      ? (rankScore(b) - rankScore(a)) || b.date.localeCompare(a.date)  // score high→low, then newest
+      : sort === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
 
   const diaryCount = entries.filter(e => !e.wantToVisit).length
   const wishlistCount = entries.filter(e => e.wantToVisit).length
+  const rankingCount = entries.filter(e => !e.wantToVisit && ((e.rating ?? 0) > 0 || (e.revisit ?? 0) > 0)).length
+
+  // Render a 1〜5 score as filled icons (★ taste or ♡ また行きたい度)
+  const scoreRow = (n: number, variant: 'star' | 'heart', size = 12) => {
+    const Icon = variant === 'heart' ? Heart : Star
+    const active = variant === 'heart' ? 'fill-rose-500 text-rose-500' : 'fill-amber-400 text-amber-400'
+    return (
+      <span className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, s) => (
+          <Icon key={s} size={size} className={s < n ? active : 'text-gray-200'} />
+        ))}
+      </span>
+    )
+  }
+
+  // Medal colors for the top 3 ranking positions
+  const rankBadge = (i: number) =>
+    i === 0 ? 'bg-amber-400 text-white' :
+    i === 1 ? 'bg-gray-300 text-white' :
+    i === 2 ? 'bg-orange-300 text-white' : 'bg-gray-100 text-gray-400'
 
   return (
     <div className="flex flex-col pb-4">
@@ -75,6 +103,16 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
           <Bookmark size={14} />
           <span>行きたい</span>
           {wishlistCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${diaryMode === 'wishlist' ? 'bg-purple-100 text-purple-500' : 'bg-gray-200 text-gray-500'}`}>{wishlistCount}</span>}
+        </button>
+        <button
+          onClick={() => { setDiaryMode('ranking'); onFilterTag(null) }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+            isRanking ? 'bg-white text-amber-500 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <Trophy size={14} />
+          <span>ランキング</span>
+          {rankingCount > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${isRanking ? 'bg-amber-100 text-amber-500' : 'bg-gray-200 text-gray-500'}`}>{rankingCount}</span>}
         </button>
       </div>
 
@@ -113,17 +151,30 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
           )}
         </div>
 
-        {/* Sort */}
-        <div className="flex gap-2">
-          <button onClick={() => handleSortChange('newest')}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'newest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
-            <Clock size={11} /> 新しい順
-          </button>
-          <button onClick={() => handleSortChange('oldest')}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'oldest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
-            <CalendarDays size={11} /> 古い順
-          </button>
-        </div>
+        {/* Sort — in ranking, switch the metric (⭐️ / また行きたい) instead */}
+        {isRanking ? (
+          <div className="flex gap-2">
+            <button onClick={() => setRankBy('rating')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${rankBy === 'rating' ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Star size={11} className={rankBy === 'rating' ? 'fill-white' : ''} /> ⭐️評価
+            </button>
+            <button onClick={() => setRankBy('revisit')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${rankBy === 'revisit' ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Heart size={11} className={rankBy === 'revisit' ? 'fill-white' : ''} /> また行きたい
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button onClick={() => handleSortChange('newest')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'newest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Clock size={11} /> 新しい順
+            </button>
+            <button onClick={() => handleSortChange('oldest')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors ${sort === 'oldest' ? 'bg-pink-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CalendarDays size={11} /> 古い順
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tags filter */}
@@ -148,15 +199,21 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
             <p className="text-sm">{
               search || filterTag ? '該当する記録がありません'
               : diaryMode === 'wishlist' ? '行ってみたい場所を追加しよう！'
+              : isRanking ? (rankBy === 'revisit' ? '「また行きたい度」を付けた記録がここに並びます' : '評価（★）を付けた記録がここに並びます')
               : 'マップをタップして最初の記録を追加！'
             }</p>
           </div>
         ) : listStyle === 'card' ? (
-          filtered.map(entry => (
+          filtered.map((entry, i) => (
             <button key={entry.id} onClick={() => onSelectEntry(entry)}
-              className={`text-left bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.98] transition-transform ${
+              className={`relative text-left bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.98] transition-transform ${
                 entry.wantToVisit ? 'border-2 border-purple-200' : 'border border-gray-100'
               }`}>
+              {isRanking && (
+                <span className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow ${rankBadge(i)}`}>
+                  {i + 1}
+                </span>
+              )}
               {entry.wantToVisit && (
                 <div className="bg-purple-50 px-3.5 py-1.5 flex items-center gap-1.5">
                   <Bookmark size={12} className="text-purple-500" />
@@ -164,7 +221,8 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
                 </div>
               )}
               {entry.photos.length > 0 && <img src={entry.photos[0]} className="w-full h-36 object-cover" />}
-              <div className="p-3.5">
+              {/* When ranked with no photo, the medal sits over the text — pad the first line clear of it */}
+              <div className={`p-3.5 ${isRanking && entry.photos.length === 0 ? 'pl-11' : ''}`}>
                 {entry.placeName && (
                   <div className="flex items-center gap-1 mb-1">
                     <MapPin size={11} className={`flex-shrink-0 ${entry.wantToVisit ? 'text-purple-400' : 'text-pink-400'}`} />
@@ -172,6 +230,13 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
                   </div>
                 )}
                 <p className="font-semibold text-gray-800 text-sm">{entry.title}</p>
+                {(entry.rating ?? 0) > 0 && <span className="block mt-0.5">{scoreRow(entry.rating!, 'star')}</span>}
+                {(entry.revisit ?? 0) > 0 && (
+                  <span className="flex items-center gap-1 mt-0.5">
+                    {scoreRow(entry.revisit!, 'heart')}
+                    <span className="text-[10px] text-rose-400">また行きたい</span>
+                  </span>
+                )}
                 <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><CalendarDays size={10} />{entry.date}</span>
                 {entry.body && <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{entry.body}</p>}
                 {entry.tags.length > 0 && (
@@ -188,6 +253,11 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
           filtered.map((entry, i) => (
             <button key={entry.id} onClick={() => onSelectEntry(entry)}
               className={`w-full text-left flex items-center gap-3 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-100' : ''}`}>
+              {isRanking && (
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${rankBadge(i)}`}>
+                  {i + 1}
+                </span>
+              )}
               {entry.photos.length > 0
                 ? <img src={entry.photos[0]} className="w-11 h-11 object-cover rounded-xl flex-shrink-0" />
                 : <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${entry.wantToVisit ? 'bg-purple-100' : 'bg-gradient-to-br from-pink-100 to-purple-100'}`}>
@@ -199,6 +269,12 @@ export function DiaryList({ entries, filterTag, onSelectEntry, onFilterTag, onEx
                   <p className="font-semibold text-sm text-gray-800 truncate">{entry.title}</p>
                   {entry.wantToVisit && <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded-full flex-shrink-0">行きたい</span>}
                 </div>
+                {((entry.rating ?? 0) > 0 || (entry.revisit ?? 0) > 0) && (
+                  <span className="flex items-center gap-2">
+                    {(entry.rating ?? 0) > 0 && scoreRow(entry.rating!, 'star', 11)}
+                    {(entry.revisit ?? 0) > 0 && scoreRow(entry.revisit!, 'heart', 11)}
+                  </span>
+                )}
                 <p className="text-xs text-gray-400 truncate">{entry.date}{entry.placeName && ` · ${entry.placeName}`}</p>
                 {entry.tags.length > 0 && <p className="text-xs text-purple-400 truncate">{entry.tags.map(t => `#${t}`).join(' ')}</p>}
               </div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed } from 'lucide-react'
+import { Calendar, MapPin, FileText, Tag, Image, Save, Plus, Star, Loader2, X, Bookmark, LocateFixed, Heart } from 'lucide-react'
 import { extractPhotoMeta } from '../utils/exifGps'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
 import { StarRating } from './StarRating'
@@ -135,6 +135,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
   const dateEditedRef = useRef(false)
   const [placeName, setPlaceName] = useState(initial?.placeName ?? defaultPlaceName ?? '')
   const [wantToVisit, setWantToVisit] = useState(initial?.wantToVisit ?? false)
+  const [revisit, setRevisit] = useState<number>(initial?.revisit ?? 0)
   const [formLat, setFormLat] = useState(lat)
   const [formLng, setFormLng] = useState(lng)
   // Track if user has manually edited the place name field
@@ -302,6 +303,7 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
       id: initial?.id ?? uuidv4(),
       title: finalTitle, body, date: finalDate, lat: formLat, lng: formLng,
       placeName, tags: selectedTags, photos, rating, wantToVisit,
+      revisit: wantToVisit ? 0 : revisit,  // revisit only applies to visited entries
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     })
   }
@@ -419,6 +421,16 @@ export function EntryForm({ lat, lng, onSave, onCancel: _, initial, defaultPlace
           }} />
         </button>
       </div>
+
+      {/* Revisit rating — only for visited entries (not the wishlist) */}
+      {!wantToVisit && (
+        <div>
+          <label className="text-xs font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+            <Heart size={11} /> また行きたい度（任意）
+          </label>
+          <StarRating value={revisit} onChange={setRevisit} variant="heart" size={28} />
+        </div>
+      )}
 
       {/* Tags — collapsible dropdown */}
       <div>
